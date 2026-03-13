@@ -19,17 +19,15 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # ---------------- INPUT & OUTPUT PATHS ---------------- #
 
 INPUT_DIR = BASE_DIR / "data" / "raw_grib"
-TEMP_DIR = BASE_DIR / "data" / "temp_warp"
-OUTPUT_DIR = BASE_DIR / "data" / "cog"
+TEMP_DIR  = BASE_DIR / "data" / "temp_warp"     # intermediate, not committed
+OUTPUT_DIR = BASE_DIR / "data" / "cog"          # final COGs, committed to repo
 
 # ---------------- CLEAN OLD FILES ---------------- #
 
-# Clean temp folder
 if TEMP_DIR.exists():
     shutil.rmtree(TEMP_DIR)
 TEMP_DIR.mkdir(parents=True, exist_ok=True)
 
-# Clean old COG files
 if OUTPUT_DIR.exists():
     for f in OUTPUT_DIR.glob("*.tif"):
         f.unlink()
@@ -60,7 +58,6 @@ for grib_file in sorted(INPUT_DIR.iterdir()):
     if not grib_file.is_file():
         continue
 
-    # Extract forecast hour
     try:
         fhr_str = grib_file.name.split(".f")[-1]
         fhr_int = int(fhr_str)
@@ -73,25 +70,26 @@ for grib_file in sorted(INPUT_DIR.iterdir()):
     warp_tif = TEMP_DIR / f"f{fhr_str}_warp.tif"
     final_cog = OUTPUT_DIR / f"f{fhr_str}.tif"
 
-    # ---------------- STEP 1: REPROJECT ---------------- #
-
+    # ---------------- STEP 1: REPROJECT + UPSAMPLE ---------------- #
+    # → reproject to EPSG:4326 (WGS84)
+    # → upsample from 0.25° to 0.05° (5x finer resolution)
+    # → bilinear interpolation = smooth gradients between pixels
+    # → this is how Windy and other weather apps achieve smooth look
     subprocess.run([
         "gdalwarp",
         "-t_srs", "EPSG:4326",
-        "-tr", "0.25", "0.25",      # Align with GFS resolution
-        "-r", "bilinear",
+        "-tr", "0.05", "0.05",          # 0.05° = ~5km resolution (5x finer)
+        "-r", "bilinear",               # bilinear = smooth interpolation
         "-overwrite",
         str(grib_file),
         str(warp_tif)
     ], check=True)
 
-    # ---------------- STEP 2: CREATE COG ---------------- #
-
+    # ---------------- STEP 2: CONVERT TO COG ---------------- #
     subprocess.run([
         "gdal_translate",
         "-of", "COG",
         "-co", "COMPRESS=DEFLATE",
-        "-co", "BLOCKSIZE=512",
         "-co", "OVERVIEW_RESAMPLING=AVERAGE",
         "-a_nodata", "0",
         str(warp_tif),
@@ -99,11 +97,9 @@ for grib_file in sorted(INPUT_DIR.iterdir()):
     ], check=True)
 
     # ---------------- CLEAN TEMP ---------------- #
-
     warp_tif.unlink()
 
     ist_time = utc_forecast_to_ist(fhr_int)
-
     logging.info(f"COG created: {final_cog.name} | Valid: {ist_time}")
 
     processed.append({
@@ -119,8 +115,7 @@ logging.info(f"Conversion complete | {len(processed)} COG files created")
 # ---------------- SAVE PROCESSED LIST ---------------- #
 
 manifest_temp = BASE_DIR / "data" / "processed_files.json"
-
 with open(manifest_temp, "w") as f:
     json.dump(processed, f, indent=2)
 
-logging.info(f"Processed file list saved to {manifest_temp}")
+logging.info(f"Processed file list saved to {manifest_temp.name}")
