@@ -52,9 +52,22 @@
 
     <!-- BOTTOM PLAYER BAR -->
     <div id="controls">
-        <button id="play-btn">▶ Play</button>
-        <button id="pause-btn" disabled>⏸ Pause</button>
-        <div id="timestamp">Loading forecast...</div>
+
+        <!-- SCRUBBER ROW -->
+        <div id="controls-top">
+            <div id="scrubber-wrap">
+                <div id="day-markers"></div>
+                <input type="range" id="scrubber" min="0" value="0" step="1" disabled />
+            </div>
+        </div>
+
+        <!-- BUTTONS + TIMESTAMP ROW -->
+        <div id="controls-bottom">
+            <button id="play-btn">▶ Play</button>
+            <button id="pause-btn" disabled>⏸ Pause</button>
+            <div id="timestamp">Loading forecast...</div>
+        </div>
+
     </div>
 
     <script src="map.js"></script>
