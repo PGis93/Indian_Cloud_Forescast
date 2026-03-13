@@ -108,7 +108,7 @@ var CanvasRasterLayer = L.Layer.extend({
 
         this._canvas.style.position = "absolute";
         this._canvas.style.pointerEvents = "none";
-        this._canvas.style.imageRendering = "auto";
+        this._canvas.style.imageRendering = "pixelated";   // no browser blur
 
         map.on("moveend zoomend resize", this._redraw, this);
         return this;
