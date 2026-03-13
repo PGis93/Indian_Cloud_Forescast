@@ -4,7 +4,7 @@
 
 var MANIFEST_URL = "https://pgis93.github.io/Indian_Cloud_Forescast/data/manifest.json";
 var COG_BASE_URL = "https://pgis93.github.io/Indian_Cloud_Forescast/data/cog/";
-var ANIMATION_INTERVAL_MS = 1500;
+var ANIMATION_INTERVAL_MS = 2000;
 
 // ============================================================
 // MAP SETUP
@@ -16,7 +16,7 @@ var map = L.map("map", {
     zoomControl: true
 });
 
-var basemap = L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
     attribution: "© OpenStreetMap contributors",
     opacity: 0.6
 }).addTo(map);
@@ -29,7 +29,7 @@ var files = [];
 var currentIndex = 0;
 var isPlaying = false;
 var animationTimer = null;
-var layerGroup = L.layerGroup().addTo(map);  // dedicated group for COG layers
+var layerGroup = L.layerGroup().addTo(map);
 
 // ============================================================
 // UI ELEMENTS
@@ -59,17 +59,25 @@ function loadFrame(index) {
     var fileInfo = files[index];
     var url = COG_BASE_URL + fileInfo.filename;
 
+    console.log("Loading frame " + index + ": " + fileInfo.filename);
     timestampEl.textContent = fileInfo.valid_time_ist;
 
     fetch(url)
-        .then(function(response) { return response.arrayBuffer(); })
-        .then(function(arrayBuffer) { return parseGeoraster(arrayBuffer); })
+        .then(function(response) {
+            console.log("Fetched " + fileInfo.filename + " status: " + response.status);
+            return response.arrayBuffer();
+        })
+        .then(function(arrayBuffer) {
+            console.log("ArrayBuffer size: " + arrayBuffer.byteLength);
+            return parseGeoraster(arrayBuffer);
+        })
         .then(function(georaster) {
+            console.log("Georaster min: " + georaster.mins[0] + " max: " + georaster.maxs[0]);
 
-            // Clear ALL layers from the COG layer group
+            // Clear previous layers
             layerGroup.clearLayers();
+            console.log("Cleared layers");
 
-            // Add fresh layer to group
             var newLayer = new GeoRasterLayer({
                 georaster: georaster,
                 opacity: 1,
@@ -80,6 +88,7 @@ function loadFrame(index) {
             });
 
             layerGroup.addLayer(newLayer);
+            console.log("Added new layer for frame " + index);
         })
         .catch(function(err) {
             console.error("Error loading frame " + index + ":", err);
@@ -98,6 +107,7 @@ function play() {
 
     animationTimer = setInterval(function() {
         currentIndex = (currentIndex + 1) % files.length;
+        console.log("Timer tick — moving to index: " + currentIndex);
         loadFrame(currentIndex);
     }, ANIMATION_INTERVAL_MS);
 }
@@ -127,13 +137,13 @@ function init() {
         .then(function(response) { return response.json(); })
         .then(function(manifest) {
             files = manifest.files;
+            console.log("Manifest loaded — total files: " + files.length);
 
             if (!files || files.length === 0) {
                 timestampEl.textContent = "No forecast data available";
                 return;
             }
 
-            // Load first frame then enable play
             loadFrame(0);
             playBtn.disabled = false;
         })
