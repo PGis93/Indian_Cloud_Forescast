@@ -1,84 +1,258 @@
+/* ============================================================
+   RESET & BASE
+   ============================================================ */
+
 * {
     margin: 0;
     padding: 0;
     box-sizing: border-box;
 }
 
-/* Full screen map */
 html, body {
-    height: 100%;
     width: 100%;
-    font-family: Arial, sans-serif;
+    height: 100%;
+    background: #0d1117;
+    font-family: 'Segoe UI', sans-serif;
+    overflow: hidden;
 }
+
+/* ============================================================
+   MAP
+   ============================================================ */
 
 #map {
-    height: 100%;
-    width: 100%;
-    background: #1a1a2e;
-}
-
-/* Player controls box */
-#controls {
     position: absolute;
-    bottom: 30px;
-    left: 50%;
-    transform: translateX(-50%);
-    z-index: 1000;
-    background: rgba(0, 0, 0, 0.75);
-    color: white;
-    padding: 12px 20px;
-    border-radius: 10px;
-    text-align: center;
-    min-width: 260px;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.5);
+    top: 0;
+    left: 64px;           /* sidebar width */
+    right: 0;
+    bottom: 56px;         /* controls bar height */
 }
 
-/* Timestamp label */
-#timestamp {
-    font-size: 14px;
-    margin-bottom: 10px;
-    letter-spacing: 0.5px;
-    color: #d0d0d0;
-}
+/* ============================================================
+   SIDEBAR
+   ============================================================ */
 
-/* Buttons row */
-#buttons {
+#sidebar {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 64px;
+    bottom: 56px;
+    background: #161b22;
+    border-right: 1px solid #30363d;
     display: flex;
-    justify-content: center;
-    gap: 10px;
+    flex-direction: column;
+    align-items: center;
+    padding-top: 12px;
+    gap: 6px;
+    z-index: 1000;
 }
 
-/* Play and Pause buttons */
-#buttons button {
-    background: #2e86ab;
-    color: white;
-    border: none;
-    padding: 8px 20px;
-    border-radius: 6px;
-    font-size: 14px;
+#sidebar-title {
+    font-size: 8px;
+    font-weight: 700;
+    letter-spacing: 1.5px;
+    color: #484f58;
+    margin-bottom: 6px;
+    text-transform: uppercase;
+}
+
+/* Layer buttons */
+.layer-btn {
+    width: 48px;
+    height: 52px;
+    background: transparent;
+    border: 1px solid #30363d;
+    border-radius: 10px;
     cursor: pointer;
-    transition: background 0.2s;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    transition: all 0.2s ease;
+    color: #8b949e;
 }
 
-#buttons button:hover {
-    background: #1b6ca8;
+.layer-btn:hover:not(.disabled) {
+    background: #21262d;
+    border-color: #58a6ff;
+    color: #e6edf3;
 }
 
-#buttons button:disabled {
-    background: #555;
+.layer-btn.active {
+    background: #1f4068;
+    border-color: #58a6ff;
+    color: #58a6ff;
+}
+
+.layer-btn.disabled {
+    opacity: 0.3;
     cursor: not-allowed;
 }
 
-/* Loading indicator */
-#loading {
+.layer-icon {
+    font-size: 18px;
+    line-height: 1;
+}
+
+.layer-label {
+    font-size: 9px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+}
+
+/* ============================================================
+   LEGEND
+   ============================================================ */
+
+#legend {
+    margin-top: auto;
+    margin-bottom: 12px;
+    width: 48px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+}
+
+#legend-title {
+    font-size: 7px;
+    color: #484f58;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    text-align: center;
+}
+
+#legend-bar {
+    width: 12px;
+    height: 80px;
+    border-radius: 6px;
+    background: linear-gradient(
+        to bottom,
+        rgba(80, 80, 80, 1) 0%,
+        rgba(150, 150, 150, 0.8) 50%,
+        rgba(220, 220, 220, 0.2) 100%
+    );
+    border: 1px solid #30363d;
+}
+
+#legend-labels {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0;
+    width: 100%;
+}
+
+#legend-labels span {
+    font-size: 7px;
+    color: #484f58;
+    line-height: 1.4;
+}
+
+/* ============================================================
+   BOTTOM CONTROLS
+   ============================================================ */
+
+#controls {
     position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    z-index: 2000;
-    background: rgba(0,0,0,0.75);
-    color: white;
-    padding: 16px 28px;
-    border-radius: 10px;
-    font-size: 15px;
+    bottom: 0;
+    left: 64px;          /* align with map, not sidebar */
+    right: 0;
+    height: 56px;
+    background: #161b22;
+    border-top: 1px solid #30363d;
+    display: flex;
+    align-items: center;
+    padding: 0 20px;
+    gap: 12px;
+    z-index: 1000;
+}
+
+#play-btn, #pause-btn {
+    padding: 7px 18px;
+    border-radius: 6px;
+    border: none;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    letter-spacing: 0.3px;
+}
+
+#play-btn {
+    background: #1f6feb;
+    color: #ffffff;
+}
+
+#play-btn:hover:not(:disabled) {
+    background: #388bfd;
+}
+
+#pause-btn {
+    background: #21262d;
+    color: #8b949e;
+    border: 1px solid #30363d;
+}
+
+#pause-btn:hover:not(:disabled) {
+    background: #30363d;
+    color: #e6edf3;
+}
+
+#play-btn:disabled, #pause-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+#timestamp {
+    margin-left: 8px;
+    font-size: 13px;
+    color: #8b949e;
+    font-weight: 500;
+    letter-spacing: 0.3px;
+    white-space: nowrap;
+}
+
+/* ============================================================
+   RESPONSIVE — MOBILE
+   ============================================================ */
+
+@media (max-width: 600px) {
+
+    #sidebar {
+        width: 54px;
+    }
+
+    #map {
+        left: 54px;
+        bottom: 52px;
+    }
+
+    #controls {
+        left: 54px;
+        height: 52px;
+        padding: 0 12px;
+        gap: 8px;
+    }
+
+    #play-btn, #pause-btn {
+        padding: 6px 12px;
+        font-size: 12px;
+    }
+
+    #timestamp {
+        font-size: 11px;
+    }
+
+    .layer-btn {
+        width: 42px;
+        height: 46px;
+    }
+
+    .layer-icon {
+        font-size: 16px;
+    }
 }
