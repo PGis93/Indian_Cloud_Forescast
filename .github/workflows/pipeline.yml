@@ -6,7 +6,7 @@ on:
     - cron: "30 0 * * *"               # Runs daily at 00:30 UTC = 06:00 IST
 
 permissions:
-  contents: write                       # Allows pipeline to commit COG files
+  contents: write
 
 jobs:
   run-pipeline:
@@ -16,6 +16,8 @@ jobs:
 
     - name: Checkout repository
       uses: actions/checkout@v3
+      with:
+        fetch-depth: 1
 
     - name: Setup Python
       uses: actions/setup-python@v4
@@ -35,23 +37,48 @@ jobs:
     - name: Create data directories
       run: |
         mkdir -p data/raw_grib
-        mkdir -p data/geotiff
+        mkdir -p data/temp_warp
         mkdir -p data/cog
 
-    - name: Run cloud cover pipeline
+    - name: Run pipeline
       run: |
         python scripts/03_run_pipeline.py
 
-    - name: Commit COG files and manifest
+    - name: Configure git
       run: |
         git config --global user.name "github-actions"
         git config --global user.email "actions@github.com"
+        git config --global http.postBuffer 524288000
 
-        git add data/cog/
+    - name: Commit manifest
+      run: |
         git add data/manifest.json
-
-        git status
-        git diff --cached --quiet || git commit -m "Daily update: $(date +'%Y-%m-%d') 00z cycle"
-
+        git diff --cached --quiet || git commit -m "Daily update: $(date +'%Y-%m-%d') 00z cycle - manifest"
         git pull --rebase
         git push
+
+    - name: Commit COG files in batches
+      run: |
+        # Collect all tif files under data/cog/ (works flat or with subfolders)
+        mapfile -t FILES < <(find data/cog/ -name "*.tif" | sort)
+        BATCH_SIZE=10
+        TOTAL=${#FILES[@]}
+
+        if [ "$TOTAL" -eq 0 ]; then
+          echo "No COG files found — skipping"
+          exit 0
+        fi
+
+        BATCHES=$(( (TOTAL + BATCH_SIZE - 1) / BATCH_SIZE ))
+        echo "Total files: $TOTAL | Batches: $BATCHES"
+
+        for ((b=0; b<BATCHES; b++)); do
+          START=$((b * BATCH_SIZE))
+          BATCH=("${FILES[@]:$START:$BATCH_SIZE}")
+
+          git add "${BATCH[@]}"
+          git diff --cached --quiet || git commit -m "Daily update: $(date +'%Y-%m-%d') COG batch $((b+1)) of $BATCHES"
+          git pull --rebase
+          git push
+          echo "Pushed batch $((b+1)) of $BATCHES"
+        done
