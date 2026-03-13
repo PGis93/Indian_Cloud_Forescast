@@ -38,18 +38,13 @@ FORECAST_HOURS = [
     102, 114, 126, 138                    # Beyond Day 5
 ]
 
-# India bounding box
+# Global coverage — no subregion filter
 PARAMS_TEMPLATE = {
     "dir": f"/gfs.{DATE}/{CYCLE}/atmos",
     "var_MCDC": "on",                     # Middle Cloud Cover
-    "subregion": "",
-    "toplat": "40",
-    "leftlon": "60",
-    "rightlon": "100",
-    "bottomlat": "5"
 }
 
-MAX_THREADS = 6
+MAX_THREADS = 4                           # reduced threads for larger files
 
 # ---------------- LOGGING ---------------- #
 
@@ -86,7 +81,7 @@ def download_file(forecast_hour):
     try:
         logging.info(f"Downloading {filename}")
 
-        r = session.get(BASE_URL, params=p, stream=True, timeout=120)
+        r = session.get(BASE_URL, params=p, stream=True, timeout=300)
 
         if r.status_code != 200:
             logging.error(f"Failed {filename} - HTTP {r.status_code}")
@@ -97,7 +92,8 @@ def download_file(forecast_hour):
                 if chunk:
                     f.write(chunk)
 
-        logging.info(f"Downloaded {filename}")
+        size_mb = round(filepath.stat().st_size / (1024 * 1024), 2)
+        logging.info(f"Downloaded {filename} | {size_mb} MB")
 
     except Exception as e:
         logging.error(f"Error downloading {filename}: {e}")
@@ -105,7 +101,7 @@ def download_file(forecast_hour):
 # ---------------- MAIN ---------------- #
 
 def main():
-    logging.info(f"Starting MCDC download | GFS Date: {DATE} | Cycle: {CYCLE}z")
+    logging.info(f"Starting GLOBAL MCDC download | GFS Date: {DATE} | Cycle: {CYCLE}z")
     logging.info(f"Total forecast hours to download: {len(FORECAST_HOURS)}")
 
     with ThreadPoolExecutor(max_workers=MAX_THREADS) as executor:
