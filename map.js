@@ -13,7 +13,8 @@ var ANIMATION_INTERVAL_MS = 2000;
 var map = L.map("map", {
     center: [20.5937, 78.9629],
     zoom: 5,
-    zoomControl: true
+    zoomControl: true,
+    preferCanvas: false
 });
 
 L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
@@ -30,6 +31,7 @@ var currentIndex = 0;
 var isPlaying = false;
 var animationTimer = null;
 var currentLayer = null;
+var georasterCache = {};
 
 // ============================================================
 // UI ELEMENTS
@@ -52,14 +54,68 @@ function cloudColorScale(value) {
 }
 
 // ============================================================
-// PRELOADED GEORASTERS CACHE
+// RENDER FRAME
 // ============================================================
 
-var georasterCache = {};
+function renderFrame(index, georaster) {
+
+    // Step 1 — remove old layer
+    if (currentLayer) {
+        map.removeLayer(currentLayer);
+        currentLayer = null;
+    }
+
+    // Step 2 — create new layer
+    currentLayer = new GeoRasterLayer({
+        georaster: georaster,
+        opacity: 1,
+        pixelValuesToColorFn: function(values) {
+            return cloudColorScale(values[0]);
+        },
+        resolution: 256
+    });
+
+    // Step 3 — add to map
+    currentLayer.addTo(map);
+
+    // Step 4 — force map to redraw canvas
+    map.invalidateSize();
+    map.fire("moveend");
+
+    // Step 5 — update timestamp
+    timestampEl.textContent = files[index].valid_time_ist;
+}
+
+// ============================================================
+// SHOW FRAME
+// ============================================================
+
+function showFrame(index) {
+    var georaster = georasterCache[index];
+
+    if (georaster) {
+        renderFrame(index, georaster);
+    } else {
+        var url = COG_BASE_URL + files[index].filename;
+        fetch(url)
+            .then(function(r) { return r.arrayBuffer(); })
+            .then(function(buf) { return parseGeoraster(buf); })
+            .then(function(gr) {
+                georasterCache[index] = gr;
+                renderFrame(index, gr);
+            })
+            .catch(function(e) {
+                console.error("Failed frame " + index, e);
+            });
+    }
+}
+
+// ============================================================
+// PRELOAD ALL FRAMES
+// ============================================================
 
 function preloadAll() {
-    // Preload all georasters in background
-    for (var i = 0; i < files.length; i++) {
+    for (var i = 1; i < files.length; i++) {
         (function(idx) {
             var url = COG_BASE_URL + files[idx].filename;
             fetch(url)
@@ -67,61 +123,12 @@ function preloadAll() {
                 .then(function(buf) { return parseGeoraster(buf); })
                 .then(function(gr) {
                     georasterCache[idx] = gr;
-                    console.log("Preloaded frame " + idx);
                 })
                 .catch(function(e) {
-                    console.warn("Failed to preload frame " + idx);
+                    console.warn("Preload failed frame " + idx);
                 });
         })(i);
     }
-}
-
-// ============================================================
-// SHOW FRAME FROM CACHE
-// ============================================================
-
-function showFrame(index) {
-    var fileInfo = files[index];
-    timestampEl.textContent = fileInfo.valid_time_ist;
-
-    var georaster = georasterCache[index];
-
-    if (!georaster) {
-        console.warn("Frame " + index + " not cached yet — loading now");
-        var url = COG_BASE_URL + fileInfo.filename;
-        fetch(url)
-            .then(function(r) { return r.arrayBuffer(); })
-            .then(function(buf) { return parseGeoraster(buf); })
-            .then(function(gr) {
-                georasterCache[index] = gr;
-                renderFrame(index, gr);
-            });
-        return;
-    }
-
-    renderFrame(index, georaster);
-}
-
-function renderFrame(index, georaster) {
-    // Remove old layer completely
-    if (currentLayer) {
-        map.removeLayer(currentLayer);
-        currentLayer = null;
-    }
-
-    currentLayer = new GeoRasterLayer({
-        georaster: georaster,
-        opacity: 1,
-        pixelValuesToColorFn: function(values) {
-            return cloudColorScale(values[0]);
-        },
-        resolution: 256,
-        updateWhenIdle: false,
-        updateWhenZooming: false
-    });
-
-    currentLayer.addTo(map);
-    console.log("Rendered frame " + index);
 }
 
 // ============================================================
@@ -171,7 +178,7 @@ function init() {
                 return;
             }
 
-            // Load first frame then preload rest in background
+            // Load first frame
             var url = COG_BASE_URL + files[0].filename;
             fetch(url)
                 .then(function(r) { return r.arrayBuffer(); })
@@ -179,10 +186,7 @@ function init() {
                 .then(function(gr) {
                     georasterCache[0] = gr;
                     renderFrame(0, gr);
-                    timestampEl.textContent = files[0].valid_time_ist;
                     playBtn.disabled = false;
-
-                    // Preload remaining frames in background
                     preloadAll();
                 });
         })
