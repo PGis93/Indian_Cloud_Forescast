@@ -186,9 +186,14 @@ canvasLayer.addTo(map);
 // ============================================================
 
 function showFrame(index) {
+    // Guard: if a newer frame has already rendered, ignore this one
+    // This prevents out-of-order async fetches from jumping timestamps
+    var requestedIndex = index;
+
     var georaster = georasterCache[index];
 
     if (georaster) {
+        if (requestedIndex !== currentIndex) return;  // stale, skip
         canvasLayer.setGeoRaster(georaster);
         timestampEl.textContent = files[index].valid_time_ist;
     } else {
@@ -197,9 +202,11 @@ function showFrame(index) {
             .then(function(r)   { return r.arrayBuffer(); })
             .then(function(buf) { return parseGeoraster(buf); })
             .then(function(gr)  {
-                georasterCache[index] = gr;
+                georasterCache[requestedIndex] = gr;
+                // Only render if this is still the current frame
+                if (requestedIndex !== currentIndex) return;
                 canvasLayer.setGeoRaster(gr);
-                timestampEl.textContent = files[index].valid_time_ist;
+                timestampEl.textContent = files[requestedIndex].valid_time_ist;
             })
             .catch(function(e) {
                 console.error("Frame load failed:", index, e);
@@ -208,19 +215,32 @@ function showFrame(index) {
 }
 
 // ============================================================
-// PRELOAD ALL FRAMES IN BACKGROUND
+// PRELOAD — max 3 concurrent to avoid hogging bandwidth
 // ============================================================
 
 function preloadAll() {
-    for (var i = 1; i < files.length; i++) {
-        (function(idx) {
-            fetch(COG_BASE_URL + files[idx].filename)
-                .then(function(r)   { return r.arrayBuffer(); })
-                .then(function(buf) { return parseGeoraster(buf); })
-                .then(function(gr)  { georasterCache[idx] = gr; })
-                .catch(function()   {});
-        })(i);
+    var queue = [];
+    for (var i = 1; i < files.length; i++) queue.push(i);
+
+    var running = 0;
+    var CONCURRENT = 3;
+    var qi = 0;
+
+    function next() {
+        while (running < CONCURRENT && qi < queue.length) {
+            var idx = queue[qi++];
+            running++;
+            (function(idx) {
+                fetch(COG_BASE_URL + files[idx].filename)
+                    .then(function(r)   { return r.arrayBuffer(); })
+                    .then(function(buf) { return parseGeoraster(buf); })
+                    .then(function(gr)  { georasterCache[idx] = gr; running--; next(); })
+                    .catch(function()   { running--; next(); });
+            })(idx);
+        }
     }
+
+    next();
 }
 
 // ============================================================
