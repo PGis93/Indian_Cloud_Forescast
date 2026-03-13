@@ -2,6 +2,11 @@
    RESET & BASE
    ============================================================ */
 
+canvas.raster-canvas {
+    image-rendering: pixelated;
+    image-rendering: crisp-edges;
+}
+
 * {
     margin: 0;
     padding: 0;
