@@ -19,8 +19,8 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # ---------------- INPUT & OUTPUT PATHS ---------------- #
 
 INPUT_DIR  = BASE_DIR / "data" / "raw_grib"
-TEMP_DIR   = BASE_DIR / "data" / "temp_warp"    # intermediate, not committed
-OUTPUT_DIR = BASE_DIR / "data" / "cog"          # final COGs, committed to repo
+TEMP_DIR   = BASE_DIR / "data" / "temp_warp"
+OUTPUT_DIR = BASE_DIR / "data" / "cog" / "mcdc"   # variable-specific subfolder
 
 # ---------------- CLEAN OLD FILES ---------------- #
 
@@ -70,25 +70,32 @@ for grib_file in sorted(INPUT_DIR.iterdir()):
     warp_tif  = TEMP_DIR  / f"f{fhr_str}_warp.tif"
     final_cog = OUTPUT_DIR / f"f{fhr_str}.tif"
 
-    # ---------------- STEP 1: REPROJECT ---------------- #
-    # → reproject to EPSG:4326
-    # → keep 0.25° resolution for global (manageable file size)
-    # → bilinear still smooths within existing resolution
+    # ---------------- STEP 1: REPROJECT + UPSAMPLE ---------------- #
+    # Source: 0.25° GFS GRIB2 (India subregion already clipped)
+    # Target: 0.05° EPSG:4326
+    # → bilinear interpolation = smooth gradients, no blocky pixels
+    # → 5x finer = looks like Windy/weather apps
+    # → extended India region: 0°-45°N, 55°-110°E
     subprocess.run([
         "gdalwarp",
         "-t_srs", "EPSG:4326",
-        "-tr", "0.25", "0.25",          # 0.25° = original GFS resolution
+        "-tr", "0.05", "0.05",          # 0.05° = ~5km resolution
         "-r", "bilinear",               # smooth interpolation
+        "-te", "55", "0", "110", "45",  # clip exactly to our bounding box
         "-overwrite",
         str(grib_file),
         str(warp_tif)
     ], check=True)
 
     # ---------------- STEP 2: CONVERT TO COG ---------------- #
+    # → DEFLATE compression (works with float data)
+    # → BLOCKSIZE=512 = efficient tiling for browser access
+    # → nodata=0 = transparent where no cloud cover
     subprocess.run([
         "gdal_translate",
         "-of", "COG",
         "-co", "COMPRESS=DEFLATE",
+        "-co", "BLOCKSIZE=512",
         "-co", "OVERVIEW_RESAMPLING=AVERAGE",
         "-a_nodata", "0",
         str(warp_tif),
@@ -103,14 +110,17 @@ for grib_file in sorted(INPUT_DIR.iterdir()):
     logging.info(f"COG created: {final_cog.name} | {size_mb}MB | Valid: {ist_time}")
 
     processed.append({
-        "filename": final_cog.name,
+        "filename": f"mcdc/{final_cog.name}",   # relative path includes variable folder
         "forecast_hour": fhr_int,
-        "valid_time_ist": ist_time
+        "valid_time_ist": ist_time,
+        "variable": "mcdc",
+        "size_mb": size_mb
     })
 
 # ---------------- SUMMARY ---------------- #
 
-logging.info(f"Conversion complete | {len(processed)} COG files created")
+total_size = round(sum(p["size_mb"] for p in processed), 2)
+logging.info(f"Conversion complete | {len(processed)} COG files | Total: {total_size}MB")
 
 # ---------------- SAVE PROCESSED LIST ---------------- #
 
