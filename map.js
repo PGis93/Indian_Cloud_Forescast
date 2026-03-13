@@ -7,13 +7,12 @@ var COG_BASE_URL = "https://pgis93.github.io/Indian_Cloud_Forescast/data/cog/";
 var ANIMATION_INTERVAL_MS = 2000;
 
 // ============================================================
-// MAP SETUP
+// MAP
 // ============================================================
 
 var map = L.map("map", {
     center: [20.5937, 78.9629],
     zoom: 5,
-    zoomControl: true,
     preferCanvas: true
 });
 
@@ -30,11 +29,11 @@ var files = [];
 var currentIndex = 0;
 var isPlaying = false;
 var animationTimer = null;
-var currentLayer = null;
 var georasterCache = {};
+var rasterLayer = null;
 
 // ============================================================
-// UI ELEMENTS
+// UI
 // ============================================================
 
 var playBtn = document.getElementById("play-btn");
@@ -42,7 +41,7 @@ var pauseBtn = document.getElementById("pause-btn");
 var timestampEl = document.getElementById("timestamp");
 
 // ============================================================
-// CLOUD COVER COLOR SCALE
+// COLOR SCALE
 // ============================================================
 
 function cloudColorScale(value) {
@@ -57,33 +56,30 @@ function cloudColorScale(value) {
 }
 
 // ============================================================
-// RENDER FRAME
+// UPDATE RASTER
 // ============================================================
 
-function renderFrame(index, georaster) {
+function updateRaster(georaster, index) {
 
-    // Remove old raster layer
-    if (currentLayer) {
-        currentLayer.remove();
-        currentLayer = null;
+    if (!rasterLayer) {
+
+        rasterLayer = new GeoRasterLayer({
+            georaster: georaster,
+            opacity: 1,
+            resolution: 256,
+            pixelValuesToColorFn: function(values) {
+                return cloudColorScale(values[0]);
+            }
+        });
+
+        rasterLayer.addTo(map);
+
+    } else {
+
+        rasterLayer.georaster = georaster;
+        rasterLayer.redraw();
     }
 
-    // Create new raster layer
-    currentLayer = new GeoRasterLayer({
-        georaster: georaster,
-        opacity: 1,
-        resolution: 256,
-        updateWhenIdle: false,
-        updateWhenZooming: true,
-
-        pixelValuesToColorFn: function(values) {
-            return cloudColorScale(values[0]);
-        }
-    });
-
-    currentLayer.addTo(map);
-
-    // Update timestamp
     timestampEl.textContent = files[index].valid_time_ist;
 }
 
@@ -93,59 +89,52 @@ function renderFrame(index, georaster) {
 
 function showFrame(index) {
 
-    console.log("Showing frame:", index, files[index].filename);
+    console.log("Frame:", index, files[index].filename);
 
     var georaster = georasterCache[index];
 
     if (georaster) {
 
-        renderFrame(index, georaster);
+        updateRaster(georaster, index);
 
     } else {
 
         var url = COG_BASE_URL + files[index].filename;
 
         fetch(url)
-            .then(function(r) { return r.arrayBuffer(); })
-            .then(function(buf) { return parseGeoraster(buf); })
-            .then(function(gr) {
+            .then(function(r){ return r.arrayBuffer(); })
+            .then(function(buf){ return parseGeoraster(buf); })
+            .then(function(gr){
 
                 georasterCache[index] = gr;
 
-                renderFrame(index, gr);
+                updateRaster(gr, index);
 
             })
-            .catch(function(e) {
-
-                console.error("Failed frame " + index, e);
-
+            .catch(function(e){
+                console.error("Frame load failed:", index, e);
             });
     }
 }
 
 // ============================================================
-// PRELOAD REMAINING FRAMES
+// PRELOAD
 // ============================================================
 
 function preloadAll() {
 
     for (var i = 1; i < files.length; i++) {
 
-        (function(idx) {
+        (function(idx){
 
             var url = COG_BASE_URL + files[idx].filename;
 
             fetch(url)
-                .then(function(r) { return r.arrayBuffer(); })
-                .then(function(buf) { return parseGeoraster(buf); })
-                .then(function(gr) {
+                .then(function(r){ return r.arrayBuffer(); })
+                .then(function(buf){ return parseGeoraster(buf); })
+                .then(function(gr){
 
                     georasterCache[idx] = gr;
-
-                })
-                .catch(function() {
-
-                    console.warn("Preload failed frame " + idx);
 
                 });
 
@@ -154,10 +143,10 @@ function preloadAll() {
 }
 
 // ============================================================
-// PLAYER CONTROLS
+// PLAYER
 // ============================================================
 
-function play() {
+function play(){
 
     if (isPlaying) return;
 
@@ -166,18 +155,20 @@ function play() {
     playBtn.disabled = true;
     pauseBtn.disabled = false;
 
-    animationTimer = setInterval(function() {
+    animationTimer = setInterval(function(){
 
-        currentIndex = (currentIndex + 1) % files.length;
+        currentIndex++;
+
+        if (currentIndex >= files.length) {
+            currentIndex = 0;
+        }
 
         showFrame(currentIndex);
 
     }, ANIMATION_INTERVAL_MS);
 }
 
-function pause() {
-
-    if (!isPlaying) return;
+function pause(){
 
     isPlaying = false;
 
@@ -185,71 +176,61 @@ function pause() {
     pauseBtn.disabled = true;
 
     clearInterval(animationTimer);
-    animationTimer = null;
 }
+
+// ============================================================
+// EVENTS
+// ============================================================
 
 playBtn.addEventListener("click", play);
 pauseBtn.addEventListener("click", pause);
 
 // ============================================================
-// INITIALISE
+// INIT
 // ============================================================
 
-function init() {
+function init(){
 
-    timestampEl.textContent = "Loading forecast data...";
+    timestampEl.textContent = "Loading forecast...";
 
     playBtn.disabled = true;
     pauseBtn.disabled = true;
 
     fetch(MANIFEST_URL)
 
-        .then(function(response) {
+        .then(function(r){ return r.json(); })
 
-            return response.json();
-
-        })
-
-        .then(function(manifest) {
+        .then(function(manifest){
 
             files = manifest.files;
 
-            if (!files || files.length === 0) {
+            if (!files || files.length === 0){
 
-                timestampEl.textContent = "No forecast data available";
+                timestampEl.textContent = "No forecast data";
                 return;
-
             }
-
-            console.log("Loaded manifest:", files.length, "frames");
-
-            // Load first frame
 
             var url = COG_BASE_URL + files[0].filename;
 
             fetch(url)
-                .then(function(r) { return r.arrayBuffer(); })
-                .then(function(buf) { return parseGeoraster(buf); })
-                .then(function(gr) {
+                .then(function(r){ return r.arrayBuffer(); })
+                .then(function(buf){ return parseGeoraster(buf); })
+                .then(function(gr){
 
                     georasterCache[0] = gr;
 
-                    renderFrame(0, gr);
+                    updateRaster(gr, 0);
 
                     playBtn.disabled = false;
 
-                    // Start background preload
                     preloadAll();
                 });
-
         })
+        .catch(function(e){
 
-        .catch(function(err) {
+            console.error("Manifest load error:", e);
 
-            console.error("Failed to load manifest:", err);
-
-            timestampEl.textContent = "Failed to load forecast data";
-
+            timestampEl.textContent = "Forecast load failed";
         });
 }
 
