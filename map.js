@@ -30,7 +30,6 @@ var currentIndex = 0;
 var isPlaying = false;
 var animationTimer = null;
 var georasterCache = {};
-var currentLayer = null;
 
 // ============================================================
 // UI
@@ -41,68 +40,127 @@ var pauseBtn = document.getElementById("pause-btn");
 var timestampEl = document.getElementById("timestamp");
 
 // ============================================================
-// CLOUD COLOR SCALE — with smooth edge blending
+// CUSTOM CANVAS LAYER
+// draws georaster directly onto canvas every frame
 // ============================================================
 
-function cloudColorScale(value) {
-    if (value === null || value === undefined || isNaN(value) || value <= 0) {
-        return null;
-    }
+var CanvasRasterLayer = L.Layer.extend({
 
-    // Smooth edge — low cloud values get lower opacity
-    // value 1-10  → very faint (smooth transition from transparent)
-    // value 10-100 → solid grey scale
-    var opacity;
-    if (value < 10) {
-        opacity = value / 10 * 0.6;       // fade in smoothly at edges
-    } else {
-        opacity = 0.6 + (value / 100) * 0.4;  // 0.6 to 1.0 for solid cloud
-    }
+    initialize: function() {
+        this._georaster = null;
+    },
 
-    var grey = Math.round(220 - (value / 100) * 140);
-    return "rgba(" + grey + "," + grey + "," + grey + "," + opacity.toFixed(2) + ")";
-}
+    onAdd: function(map) {
+        this._map = map;
+        this._canvas = L.DomUtil.create("canvas", "raster-canvas");
+        var pane = map.getPane("overlayPane");
+        pane.appendChild(this._canvas);
 
-// ============================================================
-// RENDER FRAME — always remove and recreate layer
-// ============================================================
+        this._canvas.style.position = "absolute";
+        this._canvas.style.pointerEvents = "none";
+        this._canvas.style.imageRendering = "auto";
 
-function renderFrame(index, georaster) {
+        map.on("moveend zoomend resize", this._redraw, this);
+        return this;
+    },
 
-    // Always remove old layer first
-    if (currentLayer !== null) {
-        map.removeLayer(currentLayer);
-        currentLayer = null;
-    }
+    onRemove: function(map) {
+        map.off("moveend zoomend resize", this._redraw, this);
+        L.DomUtil.remove(this._canvas);
+    },
 
-    // Create fresh layer every time
-    currentLayer = new GeoRasterLayer({
-        georaster: georaster,
-        opacity: 1,
-        resolution: 128,                   // lower = smoother appearance
-        pixelValuesToColorFn: function(values) {
-            return cloudColorScale(values[0]);
+    setGeoRaster: function(georaster) {
+        this._georaster = georaster;
+        this._redraw();
+    },
+
+    _redraw: function() {
+        if (!this._georaster || !this._map) return;
+
+        var georaster = this._georaster;
+        var map = this._map;
+        var canvas = this._canvas;
+        var ctx = canvas.getContext("2d");
+
+        // Get map bounds and size
+        var bounds = map.getBounds();
+        var size = map.getSize();
+
+        canvas.width = size.x;
+        canvas.height = size.y;
+        canvas.style.width = size.x + "px";
+        canvas.style.height = size.y + "px";
+
+        // Position canvas at top-left of map
+        var topLeft = map.latLngToLayerPoint(bounds.getNorthWest());
+        L.DomUtil.setPosition(canvas, topLeft);
+
+        // Georaster metadata
+        var west = georaster.xmin;
+        var east = georaster.xmax;
+        var north = georaster.ymax;
+        var south = georaster.ymin;
+        var cols = georaster.width;
+        var rows = georaster.height;
+        var data = georaster.values[0];
+
+        // Clear canvas
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        // Draw each pixel
+        var cellW = (east - west) / cols;
+        var cellH = (north - south) / rows;
+
+        for (var row = 0; row < rows; row++) {
+            for (var col = 0; col < cols; col++) {
+
+                var val = data[row][col];
+                if (!val || val <= 0 || isNaN(val)) continue;
+
+                // Pixel lat/lon
+                var lat = north - (row + 0.5) * cellH;
+                var lon = west + (col + 0.5) * cellW;
+
+                // Convert to pixel coordinates
+                var point = map.latLngToContainerPoint([lat, lon]);
+
+                // Pixel size on screen
+                var nw = map.latLngToContainerPoint([lat + cellH / 2, lon - cellW / 2]);
+                var se = map.latLngToContainerPoint([lat - cellH / 2, lon + cellW / 2]);
+                var pw = Math.max(1, se.x - nw.x + 1);
+                var ph = Math.max(1, se.y - nw.y + 1);
+
+                // Color
+                var grey = Math.round(220 - (val / 100) * 140);
+                var opacity;
+                if (val < 10) {
+                    opacity = val / 10 * 0.6;
+                } else {
+                    opacity = 0.6 + (val / 100) * 0.4;
+                }
+
+                ctx.fillStyle = "rgba(" + grey + "," + grey + "," + grey + "," + opacity.toFixed(2) + ")";
+                ctx.fillRect(nw.x, nw.y, pw, ph);
+            }
         }
-    });
 
-    // Add to map
-    map.addLayer(currentLayer);
+        console.log("Canvas redrawn for frame " + currentIndex);
+    }
+});
 
-    // Update timestamp
-    timestampEl.textContent = files[index].valid_time_ist;
-
-    console.log("Rendered frame " + index + ": " + files[index].filename);
-}
+var canvasLayer = new CanvasRasterLayer();
+canvasLayer.addTo(map);
 
 // ============================================================
-// SHOW FRAME — from cache or fetch
+// SHOW FRAME
 // ============================================================
 
 function showFrame(index) {
     var georaster = georasterCache[index];
+    timestampEl.textContent = files[index].valid_time_ist;
 
     if (georaster) {
-        renderFrame(index, georaster);
+        canvasLayer.setGeoRaster(georaster);
     } else {
         var url = COG_BASE_URL + files[index].filename;
         fetch(url)
@@ -110,7 +168,7 @@ function showFrame(index) {
             .then(function(buf) { return parseGeoraster(buf); })
             .then(function(gr) {
                 georasterCache[index] = gr;
-                renderFrame(index, gr);
+                canvasLayer.setGeoRaster(gr);
             })
             .catch(function(e) {
                 console.error("Frame load failed:", index, e);
@@ -119,28 +177,23 @@ function showFrame(index) {
 }
 
 // ============================================================
-// PRELOAD ALL FRAMES IN BACKGROUND
+// PRELOAD
 // ============================================================
 
 function preloadAll() {
     for (var i = 1; i < files.length; i++) {
         (function(idx) {
-            var url = COG_BASE_URL + files[idx].filename;
-            fetch(url)
+            fetch(COG_BASE_URL + files[idx].filename)
                 .then(function(r) { return r.arrayBuffer(); })
                 .then(function(buf) { return parseGeoraster(buf); })
-                .then(function(gr) {
-                    georasterCache[idx] = gr;
-                })
-                .catch(function(e) {
-                    console.warn("Preload failed frame " + idx);
-                });
+                .then(function(gr) { georasterCache[idx] = gr; })
+                .catch(function() {});
         })(i);
     }
 }
 
 // ============================================================
-// PLAYER CONTROLS
+// PLAYER
 // ============================================================
 
 function play() {
@@ -148,7 +201,6 @@ function play() {
     isPlaying = true;
     playBtn.disabled = true;
     pauseBtn.disabled = false;
-
     animationTimer = setInterval(function() {
         currentIndex = (currentIndex + 1) % files.length;
         showFrame(currentIndex);
@@ -161,14 +213,13 @@ function pause() {
     playBtn.disabled = false;
     pauseBtn.disabled = true;
     clearInterval(animationTimer);
-    animationTimer = null;
 }
 
 playBtn.addEventListener("click", play);
 pauseBtn.addEventListener("click", pause);
 
 // ============================================================
-// INITIALISE
+// INIT
 // ============================================================
 
 function init() {
@@ -180,28 +231,21 @@ function init() {
         .then(function(r) { return r.json(); })
         .then(function(manifest) {
             files = manifest.files;
-
             if (!files || files.length === 0) {
                 timestampEl.textContent = "No forecast data";
                 return;
             }
-
-            // Load and render first frame
-            var url = COG_BASE_URL + files[0].filename;
-            fetch(url)
+            fetch(COG_BASE_URL + files[0].filename)
                 .then(function(r) { return r.arrayBuffer(); })
                 .then(function(buf) { return parseGeoraster(buf); })
                 .then(function(gr) {
                     georasterCache[0] = gr;
-                    renderFrame(0, gr);
+                    showFrame(0);
                     playBtn.disabled = false;
-
-                    // Preload rest in background
                     preloadAll();
                 });
         })
         .catch(function(e) {
-            console.error("Manifest load error:", e);
             timestampEl.textContent = "Forecast load failed";
         });
 }
