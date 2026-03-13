@@ -18,8 +18,8 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 # ---------------- INPUT & OUTPUT PATHS ---------------- #
 
-INPUT_DIR = BASE_DIR / "data" / "raw_grib"
-TEMP_DIR  = BASE_DIR / "data" / "temp_warp"     # intermediate, not committed
+INPUT_DIR  = BASE_DIR / "data" / "raw_grib"
+TEMP_DIR   = BASE_DIR / "data" / "temp_warp"    # intermediate, not committed
 OUTPUT_DIR = BASE_DIR / "data" / "cog"          # final COGs, committed to repo
 
 # ---------------- CLEAN OLD FILES ---------------- #
@@ -67,19 +67,18 @@ for grib_file in sorted(INPUT_DIR.iterdir()):
 
     logging.info(f"Processing {grib_file.name}")
 
-    warp_tif = TEMP_DIR / f"f{fhr_str}_warp.tif"
+    warp_tif  = TEMP_DIR  / f"f{fhr_str}_warp.tif"
     final_cog = OUTPUT_DIR / f"f{fhr_str}.tif"
 
-    # ---------------- STEP 1: REPROJECT + UPSAMPLE ---------------- #
-    # → reproject to EPSG:4326 (WGS84)
-    # → upsample from 0.25° to 0.05° (5x finer resolution)
-    # → bilinear interpolation = smooth gradients between pixels
-    # → this is how Windy and other weather apps achieve smooth look
+    # ---------------- STEP 1: REPROJECT ---------------- #
+    # → reproject to EPSG:4326
+    # → keep 0.25° resolution for global (manageable file size)
+    # → bilinear still smooths within existing resolution
     subprocess.run([
         "gdalwarp",
         "-t_srs", "EPSG:4326",
-        "-tr", "0.05", "0.05",          # 0.05° = ~5km resolution (5x finer)
-        "-r", "bilinear",               # bilinear = smooth interpolation
+        "-tr", "0.25", "0.25",          # 0.25° = original GFS resolution
+        "-r", "bilinear",               # smooth interpolation
         "-overwrite",
         str(grib_file),
         str(warp_tif)
@@ -100,7 +99,8 @@ for grib_file in sorted(INPUT_DIR.iterdir()):
     warp_tif.unlink()
 
     ist_time = utc_forecast_to_ist(fhr_int)
-    logging.info(f"COG created: {final_cog.name} | Valid: {ist_time}")
+    size_mb = round(final_cog.stat().st_size / (1024 * 1024), 2)
+    logging.info(f"COG created: {final_cog.name} | {size_mb}MB | Valid: {ist_time}")
 
     processed.append({
         "filename": final_cog.name,
