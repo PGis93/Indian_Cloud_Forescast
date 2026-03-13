@@ -29,7 +29,7 @@ var map = L.map("map", {
 
 L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
     attribution: "© OpenStreetMap contributors",
-    opacity: 0.5
+    opacity: 0.6
 }).addTo(map);
 
 // ============================================================
@@ -186,12 +186,11 @@ canvasLayer.addTo(map);
 // ============================================================
 
 function showFrame(index) {
-    timestampEl.textContent = files[index].valid_time_ist;
-
     var georaster = georasterCache[index];
 
     if (georaster) {
         canvasLayer.setGeoRaster(georaster);
+        timestampEl.textContent = files[index].valid_time_ist;
     } else {
         var url = COG_BASE_URL + files[index].filename;
         fetch(url)
@@ -200,6 +199,7 @@ function showFrame(index) {
             .then(function(gr)  {
                 georasterCache[index] = gr;
                 canvasLayer.setGeoRaster(gr);
+                timestampEl.textContent = files[index].valid_time_ist;
             })
             .catch(function(e) {
                 console.error("Frame load failed:", index, e);
