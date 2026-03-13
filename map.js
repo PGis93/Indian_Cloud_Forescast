@@ -16,7 +16,7 @@ var map = L.map("map", {
     zoomControl: true
 });
 
-L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+var basemap = L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
     attribution: "© OpenStreetMap contributors",
     opacity: 0.6
 }).addTo(map);
@@ -29,7 +29,7 @@ var files = [];
 var currentIndex = 0;
 var isPlaying = false;
 var animationTimer = null;
-var currentLayer = null;
+var layerGroup = L.layerGroup().addTo(map);  // dedicated group for COG layers
 
 // ============================================================
 // UI ELEMENTS
@@ -55,7 +55,7 @@ function cloudColorScale(value) {
 // LOAD SINGLE COG FRAME
 // ============================================================
 
-function loadFrame(index, callback) {
+function loadFrame(index) {
     var fileInfo = files[index];
     var url = COG_BASE_URL + fileInfo.filename;
 
@@ -66,14 +66,11 @@ function loadFrame(index, callback) {
         .then(function(arrayBuffer) { return parseGeoraster(arrayBuffer); })
         .then(function(georaster) {
 
-            // Remove old layer
-            if (currentLayer) {
-                map.removeLayer(currentLayer);
-                currentLayer = null;
-            }
+            // Clear ALL layers from the COG layer group
+            layerGroup.clearLayers();
 
-            // Add new layer
-            currentLayer = new GeoRasterLayer({
+            // Add fresh layer to group
+            var newLayer = new GeoRasterLayer({
                 georaster: georaster,
                 opacity: 1,
                 pixelValuesToColorFn: function(values) {
@@ -82,24 +79,11 @@ function loadFrame(index, callback) {
                 resolution: 256
             });
 
-            currentLayer.addTo(map);
-
-            // Call callback when done
-            if (callback) callback();
+            layerGroup.addLayer(newLayer);
         })
         .catch(function(err) {
-            console.error("Error loading frame:", err);
-            if (callback) callback();
+            console.error("Error loading frame " + index + ":", err);
         });
-}
-
-// ============================================================
-// ANIMATION — step to next frame
-// ============================================================
-
-function nextFrame() {
-    currentIndex = (currentIndex + 1) % files.length;
-    loadFrame(currentIndex, null);
 }
 
 // ============================================================
@@ -111,7 +95,11 @@ function play() {
     isPlaying = true;
     playBtn.disabled = true;
     pauseBtn.disabled = false;
-    animationTimer = setInterval(nextFrame, ANIMATION_INTERVAL_MS);
+
+    animationTimer = setInterval(function() {
+        currentIndex = (currentIndex + 1) % files.length;
+        loadFrame(currentIndex);
+    }, ANIMATION_INTERVAL_MS);
 }
 
 function pause() {
@@ -132,6 +120,8 @@ pauseBtn.addEventListener("click", pause);
 
 function init() {
     timestampEl.textContent = "Loading forecast data...";
+    playBtn.disabled = true;
+    pauseBtn.disabled = true;
 
     fetch(MANIFEST_URL)
         .then(function(response) { return response.json(); })
@@ -143,10 +133,9 @@ function init() {
                 return;
             }
 
-            // Load first frame
-            loadFrame(0, function() {
-                playBtn.disabled = false;
-            });
+            // Load first frame then enable play
+            loadFrame(0);
+            playBtn.disabled = false;
         })
         .catch(function(err) {
             console.error("Failed to load manifest:", err);
