@@ -2,8 +2,8 @@
 // CONFIG
 // ============================================================
 
-const MANIFEST_URL = "../data/manifest.json";
-const COG_BASE_URL = "../data/cog/";
+const MANIFEST_URL = "https://pgis93.github.io/Indian_Cloud_Forescast/data/manifest.json";
+const COG_BASE_URL = "https://pgis93.github.io/Indian_Cloud_Forescast/data/cog/";
 const ANIMATION_INTERVAL_MS = 1000;       // 1 second per frame
 
 // ============================================================
