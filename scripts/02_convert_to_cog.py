@@ -19,17 +19,17 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # ---------------- INPUT & OUTPUT PATHS ---------------- #
 
 INPUT_DIR = BASE_DIR / "data" / "raw_grib"
-TEMP_DIR = BASE_DIR / "data" / "geotiff"        # intermediate, not committed
-OUTPUT_DIR = BASE_DIR / "data" / "cog"          # final COGs, committed to repo
+TEMP_DIR = BASE_DIR / "data" / "temp_warp"
+OUTPUT_DIR = BASE_DIR / "data" / "cog"
 
 # ---------------- CLEAN OLD FILES ---------------- #
 
-# Clean intermediate temp folder
+# Clean temp folder
 if TEMP_DIR.exists():
     shutil.rmtree(TEMP_DIR)
 TEMP_DIR.mkdir(parents=True, exist_ok=True)
 
-# Clean old COG files — replaced fresh daily
+# Clean old COG files
 if OUTPUT_DIR.exists():
     for f in OUTPUT_DIR.glob("*.tif"):
         f.unlink()
@@ -46,13 +46,12 @@ CYCLE = "00"
 DATE = (datetime.utcnow() - timedelta(days=1)).strftime("%Y%m%d")
 
 def utc_forecast_to_ist(forecast_hour):
-    """Convert GFS forecast hour to IST datetime string."""
     base_utc = datetime.strptime(f"{DATE} {CYCLE}:00", "%Y%m%d %H:%M")
     valid_utc = base_utc + timedelta(hours=forecast_hour)
     valid_ist = valid_utc + timedelta(hours=5, minutes=30)
     return valid_ist.strftime("%Y-%m-%d %H:%M IST")
 
-# ---------------- CONVERSION ---------------- #
+# ---------------- PROCESSING ---------------- #
 
 processed = []
 
@@ -61,47 +60,50 @@ for grib_file in sorted(INPUT_DIR.iterdir()):
     if not grib_file.is_file():
         continue
 
-    # Extract forecast hour from filename
-    # e.g. gfs.t00z.pgrb2.0p25.f019 → 019 → 19
+    # Extract forecast hour
     try:
         fhr_str = grib_file.name.split(".f")[-1]
         fhr_int = int(fhr_str)
     except ValueError:
-        logging.warning(f"Skipping unrecognised file: {grib_file.name}")
+        logging.warning(f"Skipping unrecognized file: {grib_file.name}")
         continue
 
     logging.info(f"Processing {grib_file.name}")
 
-    # Output filenames
-    temp_tif = TEMP_DIR / f"f{fhr_str}.tif"
+    warp_tif = TEMP_DIR / f"f{fhr_str}_warp.tif"
     final_cog = OUTPUT_DIR / f"f{fhr_str}.tif"
 
-    # Step 1: GRIB2 → GeoTIFF (extract MCDC band)
+    # ---------------- STEP 1: REPROJECT ---------------- #
+
     subprocess.run([
-        "gdal_translate",
-        "-of", "GTiff",
+        "gdalwarp",
+        "-t_srs", "EPSG:4326",
+        "-tr", "0.25", "0.25",      # Align with GFS resolution
+        "-r", "bilinear",
+        "-overwrite",
         str(grib_file),
-        str(temp_tif)
+        str(warp_tif)
     ], check=True)
 
-    # Step 2: Convert to COG with compression
-    # → DEFLATE compression keeps file size small
-    # → PREDICTOR=2 removed (incompatible with 64-bit float GFS data)
-    # → 0 values set as NoData (transparent on frontend)
+    # ---------------- STEP 2: CREATE COG ---------------- #
+
     subprocess.run([
         "gdal_translate",
         "-of", "COG",
         "-co", "COMPRESS=DEFLATE",
+        "-co", "BLOCKSIZE=512",
         "-co", "OVERVIEW_RESAMPLING=AVERAGE",
         "-a_nodata", "0",
-        str(temp_tif),
+        str(warp_tif),
         str(final_cog)
     ], check=True)
 
-    # Clean temp file
-    temp_tif.unlink()
+    # ---------------- CLEAN TEMP ---------------- #
+
+    warp_tif.unlink()
 
     ist_time = utc_forecast_to_ist(fhr_int)
+
     logging.info(f"COG created: {final_cog.name} | Valid: {ist_time}")
 
     processed.append({
@@ -110,13 +112,15 @@ for grib_file in sorted(INPUT_DIR.iterdir()):
         "valid_time_ist": ist_time
     })
 
+# ---------------- SUMMARY ---------------- #
+
 logging.info(f"Conversion complete | {len(processed)} COG files created")
 
 # ---------------- SAVE PROCESSED LIST ---------------- #
-# This list is passed to manifest generation in pipeline script
 
 manifest_temp = BASE_DIR / "data" / "processed_files.json"
+
 with open(manifest_temp, "w") as f:
     json.dump(processed, f, indent=2)
 
-logging.info(f"Processed file list saved to {manifest_temp.name}")
+logging.info(f"Processed file list saved to {manifest_temp}")
