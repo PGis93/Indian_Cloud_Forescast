@@ -2,21 +2,20 @@
 // CONFIG
 // ============================================================
 
-const MANIFEST_URL = "https://pgis93.github.io/Indian_Cloud_Forescast/data/manifest.json";
-const COG_BASE_URL = "https://pgis93.github.io/Indian_Cloud_Forescast/data/cog/";
-const ANIMATION_INTERVAL_MS = 1000;       // 1 second per frame
+var MANIFEST_URL = "https://pgis93.github.io/Indian_Cloud_Forescast/data/manifest.json";
+var COG_BASE_URL = "https://pgis93.github.io/Indian_Cloud_Forescast/data/cog/";
+var ANIMATION_INTERVAL_MS = 1500;
 
 // ============================================================
-// MAP SETUP — centered on India
+// MAP SETUP
 // ============================================================
 
-const map = L.map("map", {
+var map = L.map("map", {
     center: [20.5937, 78.9629],
     zoom: 5,
     zoomControl: true
 });
 
-// Basemap
 L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
     attribution: "© OpenStreetMap contributors",
     opacity: 0.6
@@ -26,80 +25,81 @@ L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
 // STATE
 // ============================================================
 
-let files = [];
-let currentIndex = 0;
-let isPlaying = false;
-let animationTimer = null;
-let currentLayer = null;
-let isLoading = false;
+var files = [];
+var currentIndex = 0;
+var isPlaying = false;
+var animationTimer = null;
+var currentLayer = null;
 
 // ============================================================
 // UI ELEMENTS
 // ============================================================
 
-const playBtn = document.getElementById("play-btn");
-const pauseBtn = document.getElementById("pause-btn");
-const timestampEl = document.getElementById("timestamp");
+var playBtn = document.getElementById("play-btn");
+var pauseBtn = document.getElementById("pause-btn");
+var timestampEl = document.getElementById("timestamp");
 
 // ============================================================
 // CLOUD COVER STYLING
-// → 0 or nodata = fully transparent
-// → 1-100 = solid grey (darker = more cloud)
 // ============================================================
 
 function cloudColorScale(value) {
-    if (value === 0 || value === null || value === undefined || isNaN(value)) {
-        return null;                        // fully transparent — no cloud
+    if (!value || value === 0 || isNaN(value)) {
+        return null;
     }
-    // Solid grey — darker for higher cloud cover
-    // value 1  → light grey  rgb(220,220,220)
-    // value 100 → dark grey  rgb(80,80,80)
-    const grey = Math.round(220 - (value / 100) * 140);
-    return `rgba(${grey}, ${grey}, ${grey}, 1)`;   // fully opaque
+    var grey = Math.round(220 - (value / 100) * 140);
+    return "rgba(" + grey + "," + grey + "," + grey + ",1)";
 }
 
 // ============================================================
-// LOAD COG LAYER
+// LOAD SINGLE COG FRAME
 // ============================================================
 
-async function loadCOGLayer(index) {
+function loadFrame(index, callback) {
+    var fileInfo = files[index];
+    var url = COG_BASE_URL + fileInfo.filename;
 
-    if (isLoading) return;
-    isLoading = true;
+    timestampEl.textContent = fileInfo.valid_time_ist;
 
-    const fileInfo = files[index];
-    const url = COG_BASE_URL + fileInfo.filename;
+    fetch(url)
+        .then(function(response) { return response.arrayBuffer(); })
+        .then(function(arrayBuffer) { return parseGeoraster(arrayBuffer); })
+        .then(function(georaster) {
 
-    try {
-        const response = await fetch(url);
-        const arrayBuffer = await response.arrayBuffer();
-        const georaster = await parseGeoraster(arrayBuffer);
+            // Remove old layer
+            if (currentLayer) {
+                map.removeLayer(currentLayer);
+                currentLayer = null;
+            }
 
-        // Remove previous layer before adding new one
-        if (currentLayer) {
-            map.removeLayer(currentLayer);
-            currentLayer = null;
-        }
+            // Add new layer
+            currentLayer = new GeoRasterLayer({
+                georaster: georaster,
+                opacity: 1,
+                pixelValuesToColorFn: function(values) {
+                    return cloudColorScale(values[0]);
+                },
+                resolution: 256
+            });
 
-        // Add new COG layer
-        currentLayer = new GeoRasterLayer({
-            georaster: georaster,
-            opacity: 1,
-            pixelValuesToColorFn: values => cloudColorScale(values[0]),
-            resolution: 256
+            currentLayer.addTo(map);
+
+            // Call callback when done
+            if (callback) callback();
+        })
+        .catch(function(err) {
+            console.error("Error loading frame:", err);
+            if (callback) callback();
         });
+}
 
-        currentLayer.addTo(map);
+// ============================================================
+// ANIMATION — step to next frame
+// ============================================================
 
-        // Update timestamp in controls bar only
-        timestampEl.textContent = fileInfo.valid_time_ist;
-
-    } catch (err) {
-        console.error("Failed to load COG:", err);
-        timestampEl.textContent = "Error loading frame";
-    }
-
-    isLoading = false;
+function nextFrame() {
+    currentIndex = (currentIndex + 1) % files.length;
+    loadFrame(currentIndex, null);
 }
 
 // ============================================================
@@ -109,23 +109,16 @@ async function loadCOGLayer(index) {
 function play() {
     if (isPlaying) return;
     isPlaying = true;
-
     playBtn.disabled = true;
     pauseBtn.disabled = false;
-
-    animationTimer = setInterval(async () => {
-        currentIndex = (currentIndex + 1) % files.length;
-        await loadCOGLayer(currentIndex);
-    }, ANIMATION_INTERVAL_MS);
+    animationTimer = setInterval(nextFrame, ANIMATION_INTERVAL_MS);
 }
 
 function pause() {
     if (!isPlaying) return;
     isPlaying = false;
-
     playBtn.disabled = false;
     pauseBtn.disabled = true;
-
     clearInterval(animationTimer);
     animationTimer = null;
 }
@@ -134,34 +127,31 @@ playBtn.addEventListener("click", play);
 pauseBtn.addEventListener("click", pause);
 
 // ============================================================
-// LOAD MANIFEST AND INITIALISE
+// INITIALISE
 // ============================================================
 
-async function init() {
-
+function init() {
     timestampEl.textContent = "Loading forecast data...";
 
-    try {
-        const response = await fetch(MANIFEST_URL);
-        const manifest = await response.json();
+    fetch(MANIFEST_URL)
+        .then(function(response) { return response.json(); })
+        .then(function(manifest) {
+            files = manifest.files;
 
-        files = manifest.files;
+            if (!files || files.length === 0) {
+                timestampEl.textContent = "No forecast data available";
+                return;
+            }
 
-        if (!files || files.length === 0) {
-            timestampEl.textContent = "No forecast data available";
-            return;
-        }
-
-        // Load first frame
-        await loadCOGLayer(0);
-
-        playBtn.disabled = false;
-
-    } catch (err) {
-        console.error("Failed to load manifest:", err);
-        timestampEl.textContent = "Failed to load forecast data";
-    }
+            // Load first frame
+            loadFrame(0, function() {
+                playBtn.disabled = false;
+            });
+        })
+        .catch(function(err) {
+            console.error("Failed to load manifest:", err);
+            timestampEl.textContent = "Failed to load forecast data";
+        });
 }
 
-// Start app
 init();
