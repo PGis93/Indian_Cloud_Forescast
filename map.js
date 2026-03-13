@@ -51,6 +51,8 @@ var playBtn      = document.getElementById("play-btn");
 var pauseBtn     = document.getElementById("pause-btn");
 var timestampEl  = document.getElementById("timestamp");
 var layerBtns    = document.querySelectorAll(".layer-btn");
+var scrubber     = document.getElementById("scrubber");
+var dayMarkers   = document.getElementById("day-markers");
 
 // ============================================================
 // SIDEBAR LAYER BUTTONS
@@ -58,17 +60,53 @@ var layerBtns    = document.querySelectorAll(".layer-btn");
 
 layerBtns.forEach(function(btn) {
     btn.addEventListener("click", function() {
-
-        // Ignore disabled buttons (temp, precip — not yet available)
         if (btn.classList.contains("disabled")) return;
-
-        // Update active state
         layerBtns.forEach(function(b) { b.classList.remove("active"); });
         btn.classList.add("active");
-
         activeLayer = btn.getAttribute("data-layer");
     });
 });
+
+// ============================================================
+// SCRUBBER — drag to any frame
+// ============================================================
+
+function initScrubber() {
+    scrubber.max = files.length - 1;
+    scrubber.value = 0;
+    scrubber.disabled = false;
+
+    // Build day marker labels
+    dayMarkers.innerHTML = "";
+    var seenDates = {};
+    files.forEach(function(f, i) {
+        // Extract date portion e.g. "2026-03-13"
+        var dateStr = f.valid_time_ist.substring(0, 10);
+        if (!seenDates[dateStr]) {
+            seenDates[dateStr] = true;
+            var pct = (i / (files.length - 1)) * 100;
+            var marker = document.createElement("div");
+            marker.className = "day-marker";
+            marker.style.left = pct + "%";
+            // Show short date e.g. "Mar 13"
+            var d = new Date(dateStr);
+            marker.textContent = d.toLocaleDateString("en-IN", { month: "short", day: "numeric" });
+            dayMarkers.appendChild(marker);
+        }
+    });
+}
+
+// Scrubber drag — pause animation and jump to frame
+scrubber.addEventListener("input", function() {
+    pause();
+    currentIndex = parseInt(scrubber.value);
+    showFrame(currentIndex);
+});
+
+// Keep scrubber in sync during animation
+function updateScrubber() {
+    scrubber.value = currentIndex;
+}
 
 // ============================================================
 // CLOUD COVER COLOR SCALE
@@ -256,6 +294,7 @@ function play() {
     animationTimer = setInterval(function() {
         currentIndex = (currentIndex + 1) % files.length;
         showFrame(currentIndex);
+        updateScrubber();
     }, ANIMATION_INTERVAL_MS);
 }
 
@@ -296,6 +335,7 @@ function init() {
                 .then(function(gr)  {
                     georasterCache[0] = gr;
                     showFrame(0);
+                    initScrubber();
                     playBtn.disabled = false;
                     preloadAll();
                 });
