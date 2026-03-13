@@ -2,7 +2,7 @@
    RESET & BASE
    ============================================================ */
 
-canvas.raster-canvas {
+.raster-canvas {
     image-rendering: pixelated;
     image-rendering: crisp-edges;
 }
