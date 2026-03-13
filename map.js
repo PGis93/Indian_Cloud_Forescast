@@ -1,196 +1,122 @@
-// ============================================================
-// CONFIG
-// ============================================================
+import subprocess
+import logging
+import shutil
+import json
+from pathlib import Path
+from datetime import datetime, timedelta
 
-const MANIFEST_URL = "https://pgis93.github.io/Indian_Cloud_Forescast/data/manifest.json";
-const COG_BASE_URL = "https://pgis93.github.io/Indian_Cloud_Forescast/data/cog/";
-const ANIMATION_INTERVAL_MS = 1000;       // 1 second per frame
+# ---------------- LOGGING ---------------- #
 
-// ============================================================
-// MAP SETUP — centered on India
-// ============================================================
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(levelname)s - %(message)s"
+)
 
-const map = L.map("map", {
-    center: [20.5937, 78.9629],           // India center
-    zoom: 5,
-    zoomControl: true
-});
+# ---------------- PROJECT ROOT ---------------- #
 
-// Basemap — dark OpenStreetMap style
-L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-    attribution: "© OpenStreetMap contributors",
-    opacity: 0.4                          // dimmed so cloud layer is clear
-}).addTo(map);
+BASE_DIR = Path(__file__).resolve().parent.parent
 
-// ============================================================
-// STATE
-// ============================================================
+# ---------------- INPUT & OUTPUT PATHS ---------------- #
 
-let files = [];                           // list of COG files from manifest
-let currentIndex = 0;                     // current frame index
-let isPlaying = false;                    // play/pause state
-let animationTimer = null;               // setInterval reference
-let currentLayer = null;                  // current COG layer on map
-let isLoading = false;                    // prevent double loads
+INPUT_DIR = BASE_DIR / "data" / "raw_grib"
+TEMP_DIR = BASE_DIR / "data" / "geotiff"        # intermediate, not committed
+OUTPUT_DIR = BASE_DIR / "data" / "cog"          # final COGs, committed to repo
 
-// ============================================================
-// UI ELEMENTS
-// ============================================================
+# ---------------- CLEAN OLD FILES ---------------- #
 
-const playBtn = document.getElementById("play-btn");
-const pauseBtn = document.getElementById("pause-btn");
-const timestampEl = document.getElementById("timestamp");
+# Clean intermediate temp folder
+if TEMP_DIR.exists():
+    shutil.rmtree(TEMP_DIR)
+TEMP_DIR.mkdir(parents=True, exist_ok=True)
 
-// Show loading message
-function showLoading(msg) {
-    let el = document.getElementById("loading");
-    if (!el) {
-        el = document.createElement("div");
-        el.id = "loading";
-        document.body.appendChild(el);
-    }
-    el.textContent = msg;
-    el.style.display = "block";
-}
+# Clean old COG files — replaced fresh daily
+if OUTPUT_DIR.exists():
+    for f in OUTPUT_DIR.glob("*.tif"):
+        f.unlink()
+OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
-// Hide loading message
-function hideLoading() {
-    const el = document.getElementById("loading");
-    if (el) el.style.display = "none";
-}
+# ---------------- CHECK INPUT ---------------- #
 
-// ============================================================
-// CLOUD COVER STYLING
-// → 0 = transparent (no cloud)
-// → 1-100 = grey scale (light to dark grey)
-// ============================================================
+if not INPUT_DIR.exists() or not any(INPUT_DIR.iterdir()):
+    raise FileNotFoundError(f"No GRIB files found in {INPUT_DIR}")
 
-function cloudColorScale(value) {
+# ---------------- IST TIMESTAMP HELPER ---------------- #
 
-    // No cloud or nodata → fully transparent
-    if (value === 0 || value === null || isNaN(value)) {
-        return null;
-    }
+CYCLE = "00"
+DATE = (datetime.utcnow() - timedelta(days=1)).strftime("%Y%m%d")
 
-    // Scale grey: light grey for low cloud, dark grey for full cloud
-    // value 1-100 → opacity 0.2 to 0.85
-    const opacity = 0.2 + (value / 100) * 0.65;
-    const grey = Math.round(180 - (value / 100) * 80);   // 180 → 100
+def utc_forecast_to_ist(forecast_hour):
+    """Convert GFS forecast hour to IST datetime string."""
+    base_utc = datetime.strptime(f"{DATE} {CYCLE}:00", "%Y%m%d %H:%M")
+    valid_utc = base_utc + timedelta(hours=forecast_hour)
+    valid_ist = valid_utc + timedelta(hours=5, minutes=30)
+    return valid_ist.strftime("%Y-%m-%d %H:%M IST")
 
-    return `rgba(${grey}, ${grey}, ${grey}, ${opacity})`;
-}
+# ---------------- CONVERSION ---------------- #
 
-// ============================================================
-// LOAD COG LAYER
-// ============================================================
+processed = []
 
-async function loadCOGLayer(index) {
+for grib_file in sorted(INPUT_DIR.iterdir()):
 
-    if (isLoading) return;
-    isLoading = true;
+    if not grib_file.is_file():
+        continue
 
-    const fileInfo = files[index];
-    const url = COG_BASE_URL + fileInfo.filename;
+    # Extract forecast hour from filename
+    # e.g. gfs.t00z.pgrb2.0p25.f019 → 019 → 19
+    try:
+        fhr_str = grib_file.name.split(".f")[-1]
+        fhr_int = int(fhr_str)
+    except ValueError:
+        logging.warning(f"Skipping unrecognised file: {grib_file.name}")
+        continue
 
-    showLoading("Loading " + fileInfo.valid_time_ist + " ...");
+    logging.info(f"Processing {grib_file.name}")
 
-    try {
-        const response = await fetch(url);
-        const arrayBuffer = await response.arrayBuffer();
-        const georaster = await parseGeoraster(arrayBuffer);
+    # Output filenames
+    temp_tif = TEMP_DIR / f"f{fhr_str}.tif"
+    final_cog = OUTPUT_DIR / f"f{fhr_str}.tif"
 
-        // Remove previous layer
-        if (currentLayer) {
-            map.removeLayer(currentLayer);
-            currentLayer = null;
-        }
+    # Step 1: GRIB2 → GeoTIFF (extract MCDC band)
+    subprocess.run([
+        "gdal_translate",
+        "-of", "GTiff",
+        str(grib_file),
+        str(temp_tif)
+    ], check=True)
 
-        // Add new COG layer
-        currentLayer = new GeoRasterLayer({
-            georaster: georaster,
-            opacity: 1,
-            pixelValuesToColorFn: values => cloudColorScale(values[0]),
-            resolution: 256
-        });
+    # Step 2: Convert to COG with compression
+    # → DEFLATE compression keeps file size small
+    # → PREDICTOR=2 removed (incompatible with 64-bit float GFS data)
+    # → 0 values set as NoData (transparent on frontend)
+    subprocess.run([
+        "gdal_translate",
+        "-of", "COG",
+        "-co", "COMPRESS=DEFLATE",
+        "-co", "OVERVIEW_RESAMPLING=AVERAGE",
+        "-a_nodata", "0",
+        str(temp_tif),
+        str(final_cog)
+    ], check=True)
 
-        currentLayer.addTo(map);
+    # Clean temp file
+    temp_tif.unlink()
 
-        // Update timestamp display
-        timestampEl.textContent = fileInfo.valid_time_ist;
+    ist_time = utc_forecast_to_ist(fhr_int)
+    logging.info(f"COG created: {final_cog.name} | Valid: {ist_time}")
 
-        hideLoading();
+    processed.append({
+        "filename": final_cog.name,
+        "forecast_hour": fhr_int,
+        "valid_time_ist": ist_time
+    })
 
-    } catch (err) {
-        console.error("Failed to load COG:", err);
-        timestampEl.textContent = "Error loading frame";
-        hideLoading();
-    }
+logging.info(f"Conversion complete | {len(processed)} COG files created")
 
-    isLoading = false;
-}
+# ---------------- SAVE PROCESSED LIST ---------------- #
+# This list is passed to manifest generation in pipeline script
 
-// ============================================================
-// PLAYER CONTROLS
-// ============================================================
+manifest_temp = BASE_DIR / "data" / "processed_files.json"
+with open(manifest_temp, "w") as f:
+    json.dump(processed, f, indent=2)
 
-function play() {
-    if (isPlaying) return;
-    isPlaying = true;
-
-    playBtn.disabled = true;
-    pauseBtn.disabled = false;
-
-    animationTimer = setInterval(async () => {
-        currentIndex = (currentIndex + 1) % files.length;
-        await loadCOGLayer(currentIndex);
-    }, ANIMATION_INTERVAL_MS);
-}
-
-function pause() {
-    if (!isPlaying) return;
-    isPlaying = false;
-
-    playBtn.disabled = false;
-    pauseBtn.disabled = true;
-
-    clearInterval(animationTimer);
-    animationTimer = null;
-}
-
-playBtn.addEventListener("click", play);
-pauseBtn.addEventListener("click", pause);
-
-// ============================================================
-// LOAD MANIFEST AND INITIALISE
-// ============================================================
-
-async function init() {
-
-    showLoading("Fetching forecast data...");
-
-    try {
-        const response = await fetch(MANIFEST_URL);
-        const manifest = await response.json();
-
-        files = manifest.files;
-
-        if (!files || files.length === 0) {
-            timestampEl.textContent = "No forecast data available";
-            hideLoading();
-            return;
-        }
-
-        // Load first frame
-        await loadCOGLayer(0);
-
-        playBtn.disabled = false;
-
-    } catch (err) {
-        console.error("Failed to load manifest:", err);
-        timestampEl.textContent = "Failed to load forecast data";
-        hideLoading();
-    }
-}
-
-// Start app
-init();
+logging.info(f"Processed file list saved to {manifest_temp.name}")
