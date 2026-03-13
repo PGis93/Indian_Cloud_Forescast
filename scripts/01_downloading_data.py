@@ -38,13 +38,19 @@ FORECAST_HOURS = [
     102, 114, 126, 138                    # Beyond Day 5
 ]
 
-# Global coverage — no subregion filter
+# Extended India region — covers India + surrounding seas + neighbors
+# Looks much nicer on map than clipped India-only box
 PARAMS_TEMPLATE = {
     "dir": f"/gfs.{DATE}/{CYCLE}/atmos",
     "var_MCDC": "on",                     # Middle Cloud Cover
+    "subregion": "",
+    "toplat": "45",                       # extends to Afghanistan/Tibet/Nepal border
+    "bottomlat": "0",                     # extends to equator (covers Sri Lanka + ocean)
+    "leftlon": "55",                      # extends into Arabian Sea
+    "rightlon": "110",                    # extends into Bay of Bengal + Myanmar
 }
 
-MAX_THREADS = 4                           # reduced threads for larger files
+MAX_THREADS = 6
 
 # ---------------- LOGGING ---------------- #
 
@@ -81,7 +87,7 @@ def download_file(forecast_hour):
     try:
         logging.info(f"Downloading {filename}")
 
-        r = session.get(BASE_URL, params=p, stream=True, timeout=300)
+        r = session.get(BASE_URL, params=p, stream=True, timeout=120)
 
         if r.status_code != 200:
             logging.error(f"Failed {filename} - HTTP {r.status_code}")
@@ -101,8 +107,11 @@ def download_file(forecast_hour):
 # ---------------- MAIN ---------------- #
 
 def main():
-    logging.info(f"Starting GLOBAL MCDC download | GFS Date: {DATE} | Cycle: {CYCLE}z")
-    logging.info(f"Total forecast hours to download: {len(FORECAST_HOURS)}")
+    logging.info(f"Starting MCDC download | GFS Date: {DATE} | Cycle: {CYCLE}z")
+    logging.info(f"Coverage: Extended India region (0°-45°N, 55°-110°E)")
+    logging.info(f"Includes: India, Pakistan, Sri Lanka, Bangladesh, Myanmar,")
+    logging.info(f"          Arabian Sea, Bay of Bengal, Tibetan Plateau")
+    logging.info(f"Total forecast hours: {len(FORECAST_HOURS)}")
 
     with ThreadPoolExecutor(max_workers=MAX_THREADS) as executor:
         executor.map(download_file, FORECAST_HOURS)
