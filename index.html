@@ -1,39 +1,62 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>India Cloud Cover Forecast</title>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>India Weather Forecast</title>
 
-    <!-- Leaflet CSS -->
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+    <!-- Leaflet -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
-    <!-- App CSS -->
-    <link rel="stylesheet" href="styles.css"/>
+    <!-- GeoRaster -->
+    <script src="https://unpkg.com/georaster@1.6.0/dist/georaster.browser.bundle.min.js"></script>
+
+    <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
 
-    <!-- Map Container -->
-    <div id="map"></div>
+    <!-- VERTICAL SIDEBAR -->
+    <div id="sidebar">
+        <div id="sidebar-title">LAYERS</div>
 
-    <!-- Player Controls -->
-    <div id="controls">
-        <div id="timestamp">Loading...</div>
-        <div id="buttons">
-            <button id="play-btn">▶ Play</button>
-            <button id="pause-btn" disabled>⏸ Pause</button>
+        <button class="layer-btn active" data-layer="cloud">
+            <span class="layer-icon">☁️</span>
+            <span class="layer-label">Cloud</span>
+        </button>
+
+        <button class="layer-btn disabled" data-layer="temp">
+            <span class="layer-icon">🌡️</span>
+            <span class="layer-label">Temp</span>
+        </button>
+
+        <button class="layer-btn disabled" data-layer="precip">
+            <span class="layer-icon">🌧️</span>
+            <span class="layer-label">Rain</span>
+        </button>
+
+        <!-- Legend -->
+        <div id="legend">
+            <div id="legend-title">Cloud Cover</div>
+            <div id="legend-bar"></div>
+            <div id="legend-labels">
+                <span>0%</span>
+                <span>50%</span>
+                <span>100%</span>
+            </div>
         </div>
     </div>
 
-    <!-- Leaflet JS -->
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <!-- MAP -->
+    <div id="map"></div>
 
-    <!-- GeoRaster libraries for reading COG in browser -->
-    <script src="https://unpkg.com/georaster"></script>
-    <script src="https://unpkg.com/georaster-layer-for-leaflet"></script>
+    <!-- BOTTOM PLAYER BAR -->
+    <div id="controls">
+        <button id="play-btn">▶ Play</button>
+        <button id="pause-btn" disabled>⏸ Pause</button>
+        <div id="timestamp">Loading forecast...</div>
+    </div>
 
-    <!-- App JS -->
     <script src="map.js"></script>
-
 </body>
 </html>
