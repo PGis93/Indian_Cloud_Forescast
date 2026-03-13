@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>India Cloud Cover Forecast</title>
+
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+
+    <!-- App CSS -->
+    <link rel="stylesheet" href="styles.css"/>
+</head>
+<body>
+
+    <!-- Map Container -->
+    <div id="map"></div>
+
+    <!-- Player Controls -->
+    <div id="controls">
+        <div id="timestamp">Loading...</div>
+        <div id="buttons">
+            <button id="play-btn">▶ Play</button>
+            <button id="pause-btn" disabled>⏸ Pause</button>
+        </div>
+    </div>
+
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <!-- GeoRaster libraries for reading COG in browser -->
+    <script src="https://unpkg.com/georaster"></script>
+    <script src="https://unpkg.com/georaster-layer-for-leaflet"></script>
+
+    <!-- App JS -->
+    <script src="map.js"></script>
+
+</body>
+</html>
