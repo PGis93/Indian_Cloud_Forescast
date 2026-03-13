@@ -1,6 +1,7 @@
 import subprocess
 import logging
 import shutil
+import json
 from pathlib import Path
 from datetime import datetime, timedelta
 
@@ -85,12 +86,12 @@ for grib_file in sorted(INPUT_DIR.iterdir()):
 
     # Step 2: Convert to COG with compression
     # → DEFLATE compression keeps file size small
+    # → PREDICTOR=2 removed (incompatible with 64-bit float GFS data)
     # → 0 values set as NoData (transparent on frontend)
     subprocess.run([
         "gdal_translate",
         "-of", "COG",
         "-co", "COMPRESS=DEFLATE",
-        "-co", "PREDICTOR=2",
         "-co", "OVERVIEW_RESAMPLING=AVERAGE",
         "-a_nodata", "0",
         str(temp_tif),
@@ -113,8 +114,6 @@ logging.info(f"Conversion complete | {len(processed)} COG files created")
 
 # ---------------- SAVE PROCESSED LIST ---------------- #
 # This list is passed to manifest generation in pipeline script
-
-import json
 
 manifest_temp = BASE_DIR / "data" / "processed_files.json"
 with open(manifest_temp, "w") as f:
