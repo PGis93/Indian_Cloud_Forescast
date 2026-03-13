@@ -29,7 +29,7 @@ var files = [];
 var currentIndex = 0;
 var isPlaying = false;
 var animationTimer = null;
-var layerGroup = L.layerGroup().addTo(map);
+var currentLayer = null;
 
 // ============================================================
 // UI ELEMENTS
@@ -52,47 +52,76 @@ function cloudColorScale(value) {
 }
 
 // ============================================================
-// LOAD SINGLE COG FRAME
+// PRELOADED GEORASTERS CACHE
 // ============================================================
 
-function loadFrame(index) {
-    var fileInfo = files[index];
-    var url = COG_BASE_URL + fileInfo.filename;
+var georasterCache = {};
 
-    console.log("Loading frame " + index + ": " + fileInfo.filename);
+function preloadAll() {
+    // Preload all georasters in background
+    for (var i = 0; i < files.length; i++) {
+        (function(idx) {
+            var url = COG_BASE_URL + files[idx].filename;
+            fetch(url)
+                .then(function(r) { return r.arrayBuffer(); })
+                .then(function(buf) { return parseGeoraster(buf); })
+                .then(function(gr) {
+                    georasterCache[idx] = gr;
+                    console.log("Preloaded frame " + idx);
+                })
+                .catch(function(e) {
+                    console.warn("Failed to preload frame " + idx);
+                });
+        })(i);
+    }
+}
+
+// ============================================================
+// SHOW FRAME FROM CACHE
+// ============================================================
+
+function showFrame(index) {
+    var fileInfo = files[index];
     timestampEl.textContent = fileInfo.valid_time_ist;
 
-    fetch(url)
-        .then(function(response) {
-            console.log("Fetched " + fileInfo.filename + " status: " + response.status);
-            return response.arrayBuffer();
-        })
-        .then(function(arrayBuffer) {
-            console.log("ArrayBuffer size: " + arrayBuffer.byteLength);
-            return parseGeoraster(arrayBuffer);
-        })
-        .then(function(georaster) {
-            console.log("Georaster min: " + georaster.mins[0] + " max: " + georaster.maxs[0]);
+    var georaster = georasterCache[index];
 
-            // Clear previous layers
-            layerGroup.clearLayers();
-            console.log("Cleared layers");
-
-            var newLayer = new GeoRasterLayer({
-                georaster: georaster,
-                opacity: 1,
-                pixelValuesToColorFn: function(values) {
-                    return cloudColorScale(values[0]);
-                },
-                resolution: 256
+    if (!georaster) {
+        console.warn("Frame " + index + " not cached yet — loading now");
+        var url = COG_BASE_URL + fileInfo.filename;
+        fetch(url)
+            .then(function(r) { return r.arrayBuffer(); })
+            .then(function(buf) { return parseGeoraster(buf); })
+            .then(function(gr) {
+                georasterCache[index] = gr;
+                renderFrame(index, gr);
             });
+        return;
+    }
 
-            layerGroup.addLayer(newLayer);
-            console.log("Added new layer for frame " + index);
-        })
-        .catch(function(err) {
-            console.error("Error loading frame " + index + ":", err);
-        });
+    renderFrame(index, georaster);
+}
+
+function renderFrame(index, georaster) {
+    // Remove old layer completely
+    if (currentLayer) {
+        map.removeLayer(currentLayer);
+        currentLayer = null;
+    }
+
+    currentLayer = new GeoRasterLayer({
+        georaster: georaster,
+        opacity: 1,
+        pixelValuesToColorFn: function(values) {
+            return cloudColorScale(values[0]);
+        },
+        resolution: 256,
+        updateWhenIdle: false,
+        updateWhenZooming: false
+    });
+
+    currentLayer.addTo(map);
+    console.log("Rendered frame " + index);
 }
 
 // ============================================================
@@ -107,8 +136,7 @@ function play() {
 
     animationTimer = setInterval(function() {
         currentIndex = (currentIndex + 1) % files.length;
-        console.log("Timer tick — moving to index: " + currentIndex);
-        loadFrame(currentIndex);
+        showFrame(currentIndex);
     }, ANIMATION_INTERVAL_MS);
 }
 
@@ -137,15 +165,26 @@ function init() {
         .then(function(response) { return response.json(); })
         .then(function(manifest) {
             files = manifest.files;
-            console.log("Manifest loaded — total files: " + files.length);
 
             if (!files || files.length === 0) {
                 timestampEl.textContent = "No forecast data available";
                 return;
             }
 
-            loadFrame(0);
-            playBtn.disabled = false;
+            // Load first frame then preload rest in background
+            var url = COG_BASE_URL + files[0].filename;
+            fetch(url)
+                .then(function(r) { return r.arrayBuffer(); })
+                .then(function(buf) { return parseGeoraster(buf); })
+                .then(function(gr) {
+                    georasterCache[0] = gr;
+                    renderFrame(0, gr);
+                    timestampEl.textContent = files[0].valid_time_ist;
+                    playBtn.disabled = false;
+
+                    // Preload remaining frames in background
+                    preloadAll();
+                });
         })
         .catch(function(err) {
             console.error("Failed to load manifest:", err);
