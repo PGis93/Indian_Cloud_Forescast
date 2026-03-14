@@ -54,7 +54,9 @@ jobs:
       run: |
         git add data/manifest.json
         git diff --cached --quiet || git commit -m "Daily update: $(date +'%Y-%m-%d') 00z cycle - manifest"
+        git stash
         git pull --rebase
+        git stash pop || true
         git push
 
     - name: Commit COG files in batches
@@ -78,7 +80,9 @@ jobs:
 
           git add "${BATCH[@]}"
           git diff --cached --quiet || git commit -m "Daily update: $(date +'%Y-%m-%d') COG batch $((b+1)) of $BATCHES"
+          git stash
           git pull --rebase
+          git stash pop || true
           git push
           echo "Pushed batch $((b+1)) of $BATCHES"
         done
