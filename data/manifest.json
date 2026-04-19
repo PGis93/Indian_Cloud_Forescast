@@ -1,288 +1,288 @@
 {
-  "cycle_date": "20260417",
+  "cycle_date": "20260418",
   "cycle_utc": "00z",
-  "generated_at": "2026-04-18 09:06 IST",
+  "generated_at": "2026-04-19 09:25 IST",
   "total_files": 40,
   "files": [
     {
       "filename": "mcdc/f019.tif",
       "forecast_hour": 19,
-      "valid_time_ist": "2026-04-18 00:30 IST",
+      "valid_time_ist": "2026-04-19 00:30 IST",
       "variable": "mcdc",
-      "size_mb": 7.23
+      "size_mb": 7.09
     },
     {
       "filename": "mcdc/f020.tif",
       "forecast_hour": 20,
-      "valid_time_ist": "2026-04-18 01:30 IST",
+      "valid_time_ist": "2026-04-19 01:30 IST",
       "variable": "mcdc",
-      "size_mb": 7.73
+      "size_mb": 7.51
     },
     {
       "filename": "mcdc/f021.tif",
       "forecast_hour": 21,
-      "valid_time_ist": "2026-04-18 02:30 IST",
-      "variable": "mcdc",
-      "size_mb": 8.04
-    },
-    {
-      "filename": "mcdc/f022.tif",
-      "forecast_hour": 22,
-      "valid_time_ist": "2026-04-18 03:30 IST",
-      "variable": "mcdc",
-      "size_mb": 8.29
-    },
-    {
-      "filename": "mcdc/f023.tif",
-      "forecast_hour": 23,
-      "valid_time_ist": "2026-04-18 04:30 IST",
-      "variable": "mcdc",
-      "size_mb": 8.5
-    },
-    {
-      "filename": "mcdc/f024.tif",
-      "forecast_hour": 24,
-      "valid_time_ist": "2026-04-18 05:30 IST",
-      "variable": "mcdc",
-      "size_mb": 8.61
-    },
-    {
-      "filename": "mcdc/f025.tif",
-      "forecast_hour": 25,
-      "valid_time_ist": "2026-04-18 06:30 IST",
-      "variable": "mcdc",
-      "size_mb": 7.27
-    },
-    {
-      "filename": "mcdc/f026.tif",
-      "forecast_hour": 26,
-      "valid_time_ist": "2026-04-18 07:30 IST",
-      "variable": "mcdc",
-      "size_mb": 7.66
-    },
-    {
-      "filename": "mcdc/f027.tif",
-      "forecast_hour": 27,
-      "valid_time_ist": "2026-04-18 08:30 IST",
-      "variable": "mcdc",
-      "size_mb": 7.89
-    },
-    {
-      "filename": "mcdc/f028.tif",
-      "forecast_hour": 28,
-      "valid_time_ist": "2026-04-18 09:30 IST",
-      "variable": "mcdc",
-      "size_mb": 8.09
-    },
-    {
-      "filename": "mcdc/f029.tif",
-      "forecast_hour": 29,
-      "valid_time_ist": "2026-04-18 10:30 IST",
-      "variable": "mcdc",
-      "size_mb": 8.35
-    },
-    {
-      "filename": "mcdc/f030.tif",
-      "forecast_hour": 30,
-      "valid_time_ist": "2026-04-18 11:30 IST",
-      "variable": "mcdc",
-      "size_mb": 8.67
-    },
-    {
-      "filename": "mcdc/f031.tif",
-      "forecast_hour": 31,
-      "valid_time_ist": "2026-04-18 12:30 IST",
-      "variable": "mcdc",
-      "size_mb": 7.6
-    },
-    {
-      "filename": "mcdc/f032.tif",
-      "forecast_hour": 32,
-      "valid_time_ist": "2026-04-18 13:30 IST",
-      "variable": "mcdc",
-      "size_mb": 8.32
-    },
-    {
-      "filename": "mcdc/f033.tif",
-      "forecast_hour": 33,
-      "valid_time_ist": "2026-04-18 14:30 IST",
-      "variable": "mcdc",
-      "size_mb": 8.81
-    },
-    {
-      "filename": "mcdc/f034.tif",
-      "forecast_hour": 34,
-      "valid_time_ist": "2026-04-18 15:30 IST",
-      "variable": "mcdc",
-      "size_mb": 9.07
-    },
-    {
-      "filename": "mcdc/f035.tif",
-      "forecast_hour": 35,
-      "valid_time_ist": "2026-04-18 16:30 IST",
-      "variable": "mcdc",
-      "size_mb": 9.28
-    },
-    {
-      "filename": "mcdc/f036.tif",
-      "forecast_hour": 36,
-      "valid_time_ist": "2026-04-18 17:30 IST",
-      "variable": "mcdc",
-      "size_mb": 9.39
-    },
-    {
-      "filename": "mcdc/f037.tif",
-      "forecast_hour": 37,
-      "valid_time_ist": "2026-04-18 18:30 IST",
-      "variable": "mcdc",
-      "size_mb": 8.01
-    },
-    {
-      "filename": "mcdc/f038.tif",
-      "forecast_hour": 38,
-      "valid_time_ist": "2026-04-18 19:30 IST",
-      "variable": "mcdc",
-      "size_mb": 8.35
-    },
-    {
-      "filename": "mcdc/f039.tif",
-      "forecast_hour": 39,
-      "valid_time_ist": "2026-04-18 20:30 IST",
-      "variable": "mcdc",
-      "size_mb": 8.5
-    },
-    {
-      "filename": "mcdc/f040.tif",
-      "forecast_hour": 40,
-      "valid_time_ist": "2026-04-18 21:30 IST",
-      "variable": "mcdc",
-      "size_mb": 8.57
-    },
-    {
-      "filename": "mcdc/f041.tif",
-      "forecast_hour": 41,
-      "valid_time_ist": "2026-04-18 22:30 IST",
-      "variable": "mcdc",
-      "size_mb": 8.66
-    },
-    {
-      "filename": "mcdc/f042.tif",
-      "forecast_hour": 42,
-      "valid_time_ist": "2026-04-18 23:30 IST",
-      "variable": "mcdc",
-      "size_mb": 8.76
-    },
-    {
-      "filename": "mcdc/f045.tif",
-      "forecast_hour": 45,
       "valid_time_ist": "2026-04-19 02:30 IST",
       "variable": "mcdc",
       "size_mb": 7.81
     },
     {
-      "filename": "mcdc/f048.tif",
-      "forecast_hour": 48,
-      "valid_time_ist": "2026-04-19 05:30 IST",
+      "filename": "mcdc/f022.tif",
+      "forecast_hour": 22,
+      "valid_time_ist": "2026-04-19 03:30 IST",
       "variable": "mcdc",
-      "size_mb": 8.14
+      "size_mb": 7.97
     },
     {
-      "filename": "mcdc/f051.tif",
-      "forecast_hour": 51,
+      "filename": "mcdc/f023.tif",
+      "forecast_hour": 23,
+      "valid_time_ist": "2026-04-19 04:30 IST",
+      "variable": "mcdc",
+      "size_mb": 8.08
+    },
+    {
+      "filename": "mcdc/f024.tif",
+      "forecast_hour": 24,
+      "valid_time_ist": "2026-04-19 05:30 IST",
+      "variable": "mcdc",
+      "size_mb": 8.2
+    },
+    {
+      "filename": "mcdc/f025.tif",
+      "forecast_hour": 25,
+      "valid_time_ist": "2026-04-19 06:30 IST",
+      "variable": "mcdc",
+      "size_mb": 6.81
+    },
+    {
+      "filename": "mcdc/f026.tif",
+      "forecast_hour": 26,
+      "valid_time_ist": "2026-04-19 07:30 IST",
+      "variable": "mcdc",
+      "size_mb": 7.12
+    },
+    {
+      "filename": "mcdc/f027.tif",
+      "forecast_hour": 27,
       "valid_time_ist": "2026-04-19 08:30 IST",
       "variable": "mcdc",
       "size_mb": 7.33
     },
     {
-      "filename": "mcdc/f054.tif",
-      "forecast_hour": 54,
+      "filename": "mcdc/f028.tif",
+      "forecast_hour": 28,
+      "valid_time_ist": "2026-04-19 09:30 IST",
+      "variable": "mcdc",
+      "size_mb": 7.52
+    },
+    {
+      "filename": "mcdc/f029.tif",
+      "forecast_hour": 29,
+      "valid_time_ist": "2026-04-19 10:30 IST",
+      "variable": "mcdc",
+      "size_mb": 7.78
+    },
+    {
+      "filename": "mcdc/f030.tif",
+      "forecast_hour": 30,
       "valid_time_ist": "2026-04-19 11:30 IST",
       "variable": "mcdc",
-      "size_mb": 8.02
+      "size_mb": 8.07
+    },
+    {
+      "filename": "mcdc/f031.tif",
+      "forecast_hour": 31,
+      "valid_time_ist": "2026-04-19 12:30 IST",
+      "variable": "mcdc",
+      "size_mb": 7.06
+    },
+    {
+      "filename": "mcdc/f032.tif",
+      "forecast_hour": 32,
+      "valid_time_ist": "2026-04-19 13:30 IST",
+      "variable": "mcdc",
+      "size_mb": 7.64
+    },
+    {
+      "filename": "mcdc/f033.tif",
+      "forecast_hour": 33,
+      "valid_time_ist": "2026-04-19 14:30 IST",
+      "variable": "mcdc",
+      "size_mb": 8.09
+    },
+    {
+      "filename": "mcdc/f034.tif",
+      "forecast_hour": 34,
+      "valid_time_ist": "2026-04-19 15:30 IST",
+      "variable": "mcdc",
+      "size_mb": 8.37
+    },
+    {
+      "filename": "mcdc/f035.tif",
+      "forecast_hour": 35,
+      "valid_time_ist": "2026-04-19 16:30 IST",
+      "variable": "mcdc",
+      "size_mb": 8.6
+    },
+    {
+      "filename": "mcdc/f036.tif",
+      "forecast_hour": 36,
+      "valid_time_ist": "2026-04-19 17:30 IST",
+      "variable": "mcdc",
+      "size_mb": 8.8
+    },
+    {
+      "filename": "mcdc/f037.tif",
+      "forecast_hour": 37,
+      "valid_time_ist": "2026-04-19 18:30 IST",
+      "variable": "mcdc",
+      "size_mb": 7.68
+    },
+    {
+      "filename": "mcdc/f038.tif",
+      "forecast_hour": 38,
+      "valid_time_ist": "2026-04-19 19:30 IST",
+      "variable": "mcdc",
+      "size_mb": 8.09
+    },
+    {
+      "filename": "mcdc/f039.tif",
+      "forecast_hour": 39,
+      "valid_time_ist": "2026-04-19 20:30 IST",
+      "variable": "mcdc",
+      "size_mb": 8.36
+    },
+    {
+      "filename": "mcdc/f040.tif",
+      "forecast_hour": 40,
+      "valid_time_ist": "2026-04-19 21:30 IST",
+      "variable": "mcdc",
+      "size_mb": 8.54
+    },
+    {
+      "filename": "mcdc/f041.tif",
+      "forecast_hour": 41,
+      "valid_time_ist": "2026-04-19 22:30 IST",
+      "variable": "mcdc",
+      "size_mb": 8.65
+    },
+    {
+      "filename": "mcdc/f042.tif",
+      "forecast_hour": 42,
+      "valid_time_ist": "2026-04-19 23:30 IST",
+      "variable": "mcdc",
+      "size_mb": 8.77
+    },
+    {
+      "filename": "mcdc/f045.tif",
+      "forecast_hour": 45,
+      "valid_time_ist": "2026-04-20 02:30 IST",
+      "variable": "mcdc",
+      "size_mb": 8.17
+    },
+    {
+      "filename": "mcdc/f048.tif",
+      "forecast_hour": 48,
+      "valid_time_ist": "2026-04-20 05:30 IST",
+      "variable": "mcdc",
+      "size_mb": 8.59
+    },
+    {
+      "filename": "mcdc/f051.tif",
+      "forecast_hour": 51,
+      "valid_time_ist": "2026-04-20 08:30 IST",
+      "variable": "mcdc",
+      "size_mb": 8.03
+    },
+    {
+      "filename": "mcdc/f054.tif",
+      "forecast_hour": 54,
+      "valid_time_ist": "2026-04-20 11:30 IST",
+      "variable": "mcdc",
+      "size_mb": 8.29
     },
     {
       "filename": "mcdc/f057.tif",
       "forecast_hour": 57,
-      "valid_time_ist": "2026-04-19 14:30 IST",
+      "valid_time_ist": "2026-04-20 14:30 IST",
       "variable": "mcdc",
-      "size_mb": 7.99
+      "size_mb": 8.45
     },
     {
       "filename": "mcdc/f060.tif",
       "forecast_hour": 60,
-      "valid_time_ist": "2026-04-19 17:30 IST",
+      "valid_time_ist": "2026-04-20 17:30 IST",
       "variable": "mcdc",
-      "size_mb": 8.68
+      "size_mb": 9.0
     },
     {
       "filename": "mcdc/f063.tif",
       "forecast_hour": 63,
-      "valid_time_ist": "2026-04-19 20:30 IST",
+      "valid_time_ist": "2026-04-20 20:30 IST",
       "variable": "mcdc",
-      "size_mb": 8.2
+      "size_mb": 8.61
     },
     {
       "filename": "mcdc/f066.tif",
       "forecast_hour": 66,
-      "valid_time_ist": "2026-04-19 23:30 IST",
+      "valid_time_ist": "2026-04-20 23:30 IST",
       "variable": "mcdc",
-      "size_mb": 8.69
+      "size_mb": 8.98
     },
     {
       "filename": "mcdc/f072.tif",
       "forecast_hour": 72,
-      "valid_time_ist": "2026-04-20 05:30 IST",
+      "valid_time_ist": "2026-04-21 05:30 IST",
       "variable": "mcdc",
-      "size_mb": 8.71
+      "size_mb": 8.45
     },
     {
       "filename": "mcdc/f078.tif",
       "forecast_hour": 78,
-      "valid_time_ist": "2026-04-20 11:30 IST",
+      "valid_time_ist": "2026-04-21 11:30 IST",
       "variable": "mcdc",
-      "size_mb": 8.58
+      "size_mb": 8.29
     },
     {
       "filename": "mcdc/f084.tif",
       "forecast_hour": 84,
-      "valid_time_ist": "2026-04-20 17:30 IST",
+      "valid_time_ist": "2026-04-21 17:30 IST",
       "variable": "mcdc",
-      "size_mb": 9.06
+      "size_mb": 8.96
     },
     {
       "filename": "mcdc/f090.tif",
       "forecast_hour": 90,
-      "valid_time_ist": "2026-04-20 23:30 IST",
+      "valid_time_ist": "2026-04-21 23:30 IST",
       "variable": "mcdc",
-      "size_mb": 8.88
+      "size_mb": 8.51
     },
     {
       "filename": "mcdc/f102.tif",
       "forecast_hour": 102,
-      "valid_time_ist": "2026-04-21 11:30 IST",
+      "valid_time_ist": "2026-04-22 11:30 IST",
       "variable": "mcdc",
-      "size_mb": 8.24
+      "size_mb": 7.95
     },
     {
       "filename": "mcdc/f114.tif",
       "forecast_hour": 114,
-      "valid_time_ist": "2026-04-21 23:30 IST",
+      "valid_time_ist": "2026-04-22 23:30 IST",
       "variable": "mcdc",
-      "size_mb": 8.16
+      "size_mb": 7.97
     },
     {
       "filename": "mcdc/f126.tif",
       "forecast_hour": 126,
-      "valid_time_ist": "2026-04-22 11:30 IST",
+      "valid_time_ist": "2026-04-23 11:30 IST",
       "variable": "mcdc",
-      "size_mb": 7.91
+      "size_mb": 7.45
     },
     {
       "filename": "mcdc/f138.tif",
       "forecast_hour": 138,
-      "valid_time_ist": "2026-04-22 23:30 IST",
+      "valid_time_ist": "2026-04-23 23:30 IST",
       "variable": "mcdc",
-      "size_mb": 7.9
+      "size_mb": 7.13
     }
   ]
 }
